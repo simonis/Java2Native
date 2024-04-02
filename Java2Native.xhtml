@@ -21,7 +21,7 @@
     <!-- Code syntax highlighting -->
     <link rel="stylesheet" href="reveal.js/lib/css/monokai_sublime.css" />
 
-  <style type="text/css">
+    <style type="text/css">
 .scrollable {
     bottom: 0px;
     overflow-y: auto  !important;
@@ -396,7 +396,7 @@ pre.after.small::after {
     font-size: 0.5em;
     font-family: "Roboto Condensed", "sans-serif";
 }
-</style>
+    </style>
 
     <!-- Printing and PDF exports -->
     <script>
@@ -466,6 +466,9 @@ pre.after.small::after {
 ;; newlines. 'sgml-tag-alist' is the "file-local" version of 'html-tag-alist'
 (add-to-list 'html-tag-alist '("code"))
 (add-to-list 'sgml-tag-alist '("code"))
+(add-to-list 'html-tag-alist '("span"))
+(add-to-list 'sgml-tag-alist '("span"))
+
 
 -->
 
@@ -473,11 +476,10 @@ pre.after.small::after {
 
     <div class="reveal">
 
-
-    <div class="left-footer">
-       <object data="images/AWS_transparent.png" alt="AWS logo" type="image/png" style="vertical-align: middle; width: 40px; margin: 0 10px 0 0;"/>
-       <span>© 2024, Amazon Web Services, Inc. or its affiliates. All rights reserved.</span>
-    </div>
+      <div class="left-footer">
+        <object data="images/AWS_transparent.png" alt="AWS logo" type="image/png" style="vertical-align: middle; width: 40px; margin: 0 10px 0 0;"/>
+        <span>© 2024, Amazon Web Services, Inc. or its affiliates. All rights reserved.</span>
+      </div>
 
       <!-- Any section element inside of this container is displayed as a slide -->
       <div class="slides">
@@ -516,6 +518,151 @@ pre.after.small::after {
           </ul>
         </section>
 
+        <section data-background="images/background_default.jpg" class="demo">
+          <h1>Starting with a little anecdote..</h1>
+
+          <br/>
+          <div style="width: 100%">
+            <div style="float: left; width: 46%">
+
+              <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+                <code class="java" data-trim="true" data-noescape="true" style="height:100%">
+  native void emptyNativeMethod();
+
+  @CompilerControl(DONT_INLINE)
+  public void emptyMethod() {}
+
+  @Benchmark
+  public void methodCalling() {
+    emptyMethod();
+  }
+  @Benchmark
+  public void methodCallingNative() {
+    emptyNativeMethod();
+  }
+                </code>
+              </pre>
+
+            </div>
+            <div style="position:relative; float: right; width: 54%">
+
+
+              <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+                <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
+<span class="fragment" data-fragment-index="1">$ java -jar benchmarks.jar
+Benchmark              Score  Units
+methodCalling          8.493  ns/op
+methodCallingNative   <span class="fragment highlight-current-border" data-fragment-index="5">23.425</span>  ns/op
+
+<span class="fragment" data-fragment-index="3">$ java <span class="fragment highlight-current-border" data-fragment-index="3">-XX:-TieredCompilation</span> -jar ...
+Benchmark              Score  Units
+methodCalling          8.559  ns/op
+methodCallingNative  <span class="fragment highlight-current-border" data-fragment-index="5">123.906</span>  ns/op
+</span></span>
+                </code>
+              </pre>
+<!--
+Benchmark                       Mode  Cnt   Score   Error  Units
+NativeCall.methodCalling        avgt    5   8.493 ± 0.062  ns/op
+NativeCall.methodCallingNative  avgt    5  23.425 ± 0.151  ns/op
+
+Benchmark                       Mode  Cnt    Score   Error  Units
+NativeCall.methodCalling        avgt    5    8.559 ± 0.255  ns/op
+NativeCall.methodCallingNative  avgt    5  123.906 ± 0.418  ns/op
+-->
+            </div>
+          </div>
+
+          <div style="position:relative; float: left; width: 100%">
+            <p class="fragment" data-fragment-index="7" style="text-align:left; padding:0 1ex;">
+              <a href="https://bugs.openjdk.org/browse/JDK-8329126">
+                8329126: No native wrappers generated with -XX:-TieredCompilation after JDK-8251462
+              </a>
+            </p>
+          </div>
+        </section>
+
+        <section data-background="images/background_default.jpg" class="demo">
+          <h1>Some words on benchmarking..</h1>
+
+          <ul>
+
+            <span class="fragment"><li><a href="https://github.com/openjdk/jmh">Java Micro Harness</a>
+                (JMH) is a great tool, but..</li></span>
+            <span class="fragment"><li>.. <a href="https://github.com/openjdk/jmh/tree/master/jmh-samples/src/main/java/org/openjdk/jmh/samples">read the documentation</a>!!!</li></span>
+            <span class="fragment"><li>Know what you do:</li></span>
+            <span class="fragment"><li>Use physical, dedicated hardware</li></span>
+            <span class="fragment"><li>Use fixed clock speed</li></span>
+            <span class="fragment"><li>Turn Hyperthreading off</li></span>
+            <span class="fragment"><li>Pin your workload on specific CPUs
+                (<a href="https://manpages.ubuntu.com/manpages/focal/en/man1/cset.1.html">cset</a>)</li></span>
+            <span class="fragment"><li>Use a fixed Java heap (<code>-Xms</code> == <code>-Xmx</code>)</li></span>
+            <span class="fragment"><li>Preallocate memory (<code>-XX:+AlwaysPreTouch</code>)</li></span>
+            <span class="fragment"><li>Beware of GC! (<code>-XX:+UseEpsilonGC</code>)</li></span>
+            <span class="fragment"><li>Micro- vs. Macro-Benchmarks (use proper statistics)<br/><br/></li></span>
+            <span class="fragment"><li>Always verify and <em>triple</em>-check your results!</li></span>
+          </ul>
+        </section>
+
+        <section data-background="images/background_default.jpg" class="demo">
+          <h1><a href="https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/jniTOC.html">JNI</a>
+            - the Java Native Interface</h1>
+
+          <ul>
+            <li><a href="https://web.archive.org/web/20120626120230/http://java.sun.com/docs/books/jni/html/intro.html#2186">JDK 1.0</a> supported a non-standard "<em>native method interface</em>"</li>
+            <li><a href="https://web.archive.org/web/20120728074805/http://java.sun.com/docs/books/jni/">JDK 1.1</a>
+              introduced the standard JNI</li>
+            <li><a href="https://web.archive.org/web/20120626120230/http://java.sun.com/docs/books/jni/html/intro.html#2186">JDK 1.2</a>
+              rewrote internal native methods to JNI</li>
+          </ul>
+
+          <pre class="big noshadow fragment" style="height:100%; margin: 1ex;" data-trim="true">
+            <code class="java" data-trim="true" data-noescape="true" style="height:100%">
+public class NativeCall {
+
+  public native void nMethod();
+  public native int nativeMethod(int i, String s, byte[] b);
+  public static native int nativeMethod(double d, Object o);
+
+  static {
+    // Load libNativeCall.so from LD_LIBRARY_PATH / -Djava.library.path
+    System.loadLibrary("NativeCall");
+  }
+            </code>
+          </pre>
+        </section>
+
+        <section data-background="images/background_default.jpg" class="demo">
+          <h1>The Native Side</h1>
+
+          <pre class="big noshadow" style="height:100%; margin: 1ex;" data-trim="true">
+            <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
+$ javac NativeCall.java
+$ javah NativeCall                                      // JDK &lt; 11
+<span class="fragment" data-fragment-index="1">$ javac -h . NativeCall.java                           // JDK &gt;= 11</span>
+<span class="fragment" data-fragment-index="3">$ cat NativeCall.h</span>
+            </code>
+          </pre>
+
+          <pre class="big noshadow fragment" data-fragment-index="4" style="height:100%; margin: 1ex;" data-trim="true">
+            <code class="cpp" data-trim="true" data-noescape="true" style="height:100%">
+JNIEXPORT
+void JNICALL <span class="fragment highlight-current-border" data-fragment-index="5">Java</span>_<span class="fragment highlight-current-border" data-fragment-index="5">NativeCall</span>_<span class="fragment highlight-current-border" data-fragment-index="5">nMethod</span>(
+  <span class="fragment highlight-current-border" data-fragment-index="9">JNIEnv*</span>, <span class="fragment highlight-current-border" data-fragment-index="11">jobject</span>);
+
+JNIEXPORT
+// Signature: (ILjava/lang/String;[B)I
+jint JNICALL Java_NativeCall_nativeMethod__<span class="fragment highlight-current-border" data-fragment-index="7">ILjava_lang_String_2_3B</span>(
+  <span class="fragment highlight-current-border" data-fragment-index="9">JNIEnv*</span>, <span class="fragment highlight-current-border" data-fragment-index="11">jobject</span>, jint, jstring, jbyteArray);
+
+JNIEXPORT
+// Signature: (DLjava/lang/Object;)I
+jint JNICALL Java_NativeCall_nativeMethod__<span class="fragment highlight-current-border" data-fragment-index="7">DLjava_lang_Object_2</span>(
+  <span class="fragment highlight-current-border" data-fragment-index="9">JNIEnv*</span>, <span class="fragment highlight-current-border" data-fragment-index="13">jclass</span>, jdouble, jobject);
+            </code>
+          </pre>
+        </section>
+
         <section data-background="images/background_last.jpg">
           <h2 style="text-transform: none;">
             <a href="https://simonis.github.io/JavaLand2024/" style="color: inherit;">https://simonis.github.io/JavaLand2024/</a>
@@ -525,6 +672,7 @@ pre.after.small::after {
       </div>
 
     </div>
+
 
     <script src="reveal.js/lib/js/head.min.js"></script>
     <script src="reveal.js/js/reveal.js"></script>

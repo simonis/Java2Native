@@ -1,1 +1,3 @@
 *~
+examples/jmh/java2native/target
+*.class
