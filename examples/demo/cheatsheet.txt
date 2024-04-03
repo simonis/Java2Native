@@ -1,0 +1,16 @@
+LD_LIBRARY_PATH=examples/cpp /priv/simonisv/output/jdk-dbg/images/jdk/bin/jdb -classpath examples/java/ io.simonis.NativeCall
+stop at java.io.FileOutputStream.write(byte[],int,int)
+run
+where
+cont
+where
+
+
+LD_LIBRARY_PATH=examples/cpp gdb /priv/simonisv/output/jdk-dbg/images/jdk/bin/java
+run -classpath examples/java/  io.simonis.NativeCall
+b writeBytes
+cont
+where
+call pns($sp, $rbp, $pc)
+cont
+call pns($sp, $rbp, $pc)

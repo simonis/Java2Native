@@ -118,7 +118,7 @@ mark.orange {
 mark.border {
     color: inherit;
     background-color: inherit;
-    border: 5px solid #1B91FF;
+    border: 3px solid #1B91FF;
     /* Use a negative margin with the same size as the border to avoid size changes of elemnts with borders or when the border is set dynamically by fragments */
     margin: 0 -5px 0 -5px;
     border-radius: 10px;
@@ -129,7 +129,7 @@ mark.border-no-top {
     margin: 0 -5px 0 -5px;
     border-style: solid;
     border-color: #1B91FF;
-    border-width: 0px 5px 5px 5px;
+    border-width: 0px 3px 3px 3px;
     border-radius: 0px 0px 10px 10px;
 }
 mark.border-no-bottom {
@@ -138,7 +138,7 @@ mark.border-no-bottom {
     margin: 0 -5px 0 -5px;
     border-style: solid;
     border-color: #1B91FF;
-    border-width: 5px 5px 0px 5px;
+    border-width: 3px 3px 0px 3px;
     border-radius: 10px 10px 0px 0px;
 }
 
@@ -613,55 +613,325 @@ NativeCall.methodCallingNative  avgt    5  123.906 ± 0.418  ns/op
             <li><a href="https://web.archive.org/web/20120728074805/http://java.sun.com/docs/books/jni/">JDK 1.1</a>
               introduced the standard JNI</li>
             <li><a href="https://web.archive.org/web/20120626120230/http://java.sun.com/docs/books/jni/html/intro.html#2186">JDK 1.2</a>
-              rewrote internal native methods to JNI</li>
-          </ul>
+              rewrote internal native methods to JNI<br/><br/></li>
 
-          <pre class="big noshadow fragment" style="height:100%; margin: 1ex;" data-trim="true">
+            <li>Contains the JNI <a href="https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/invocation.html">JIN Invocation API</a>
+              <ul>
+                <li>Attach to a running JVM</li>
+                <li>Create and control a JVM from native code</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+
+
+        <section data-background="images/background_default.jpg" class="demo">
+          <h1>A simple example</h1>
+
+          <pre class="big noshadow" style="height:100%; margin: 1ex;" data-trim="true">
             <code class="java" data-trim="true" data-noescape="true" style="height:100%">
+package io.simonis;
+
 public class NativeCall {
 
-  public native void nMethod();
-  public native int nativeMethod(int i, String s, byte[] b);
-  public static native int nativeMethod(double d, Object o);
+  String msg = "Hello ";
+  public native int simple();
+  public native void hello(String s);
 
   static {
     // Load libNativeCall.so from LD_LIBRARY_PATH / -Djava.library.path
     System.loadLibrary("NativeCall");
   }
+
+  public static void main(String[] args) {
+    NativeCall nativeCall = new NativeCall();
+    System.out.println(nativeCall.simple());
+    nativeCall.hello("world");
+  }
+}
             </code>
           </pre>
         </section>
+
 
         <section data-background="images/background_default.jpg" class="demo">
           <h1>The Native Side</h1>
 
           <pre class="big noshadow" style="height:100%; margin: 1ex;" data-trim="true">
             <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
-$ javac NativeCall.java
-$ javah NativeCall                                      // JDK &lt; 11
-<span class="fragment" data-fragment-index="1">$ javac -h . NativeCall.java                           // JDK &gt;= 11</span>
-<span class="fragment" data-fragment-index="3">$ cat NativeCall.h</span>
+<span class="fragment fade-out" data-fragment-index="1">$ javac io/simonis/NativeCall.java
+$ javah io.simonis.NativeCall                                // JDK &lt;  11</span>
+<span class="fragment" data-fragment-index="1">$ javac -h . io/simonis/NativeCall.java                      // JDK &gt;= 11</span>
+<span class="fragment" data-fragment-index="3">$ cat io_simonis_NativeCall.h</span>
             </code>
           </pre>
 
           <pre class="big noshadow fragment" data-fragment-index="4" style="height:100%; margin: 1ex;" data-trim="true">
             <code class="cpp" data-trim="true" data-noescape="true" style="height:100%">
+// Class:     io_simonis_NativeCall
+// Method:    simple
+// Signature: ()I
 JNIEXPORT
-void JNICALL <span class="fragment highlight-current-border" data-fragment-index="5">Java</span>_<span class="fragment highlight-current-border" data-fragment-index="5">NativeCall</span>_<span class="fragment highlight-current-border" data-fragment-index="5">nMethod</span>(
-  <span class="fragment highlight-current-border" data-fragment-index="9">JNIEnv*</span>, <span class="fragment highlight-current-border" data-fragment-index="11">jobject</span>);
+jint JNICALL Java_io_simonis_NativeCall_simple(JNIEnv*, jclass);
 
+// Class:     io_simonis_NativeCall
+// Method:    hello
+// Signature: (Ljava/lang/String;)V
 JNIEXPORT
-// Signature: (ILjava/lang/String;[B)I
-jint JNICALL Java_NativeCall_nativeMethod__<span class="fragment highlight-current-border" data-fragment-index="7">ILjava_lang_String_2_3B</span>(
-  <span class="fragment highlight-current-border" data-fragment-index="9">JNIEnv*</span>, <span class="fragment highlight-current-border" data-fragment-index="11">jobject</span>, jint, jstring, jbyteArray);
-
-JNIEXPORT
-// Signature: (DLjava/lang/Object;)I
-jint JNICALL Java_NativeCall_nativeMethod__<span class="fragment highlight-current-border" data-fragment-index="7">DLjava_lang_Object_2</span>(
-  <span class="fragment highlight-current-border" data-fragment-index="9">JNIEnv*</span>, <span class="fragment highlight-current-border" data-fragment-index="13">jclass</span>, jdouble, jobject);
+void JNICALL Java_io_simonis_NativeCall_hello(JNIEnv*, jobject, jstring);
             </code>
           </pre>
         </section>
+
+
+        <section data-background="images/background_default.jpg" class="demo">
+          <h1>Implementing native methods</h1>
+
+          <pre class="big noshadow" style="height:100%; margin: 1ex;" data-trim="true">
+            <code class="cpp" data-trim="true" data-noescape="true" style="height:100%">
+#include &lt;jni.h&gt;
+#include "io_simonis_NativeCall.h"
+
+extern "C" JNIEXPORT
+jint JNICALL Java_io_simonis_NativeCall_simple(JNIEnv* env, jclass cls) {
+  return 42;
+}
+            </code>
+          </pre>
+        </section>
+
+        <section data-background="images/background_default.jpg" class="demo">
+          <h1>Implementing native methods</h1>
+
+          <pre class="big noshadow" style="height:100%; margin: 1ex;" data-trim="true">
+            <code class="cpp" data-trim="true" data-noescape="true" style="height:100%">
+extern "C" JNIEXPORT
+void JNICALL Java_io_simonis_NativeCall_hello(JNIEnv* env, jobject self, jstring s) {
+  <span class="fragment">jclass myClass = env->GetObjectClass(self);</span>
+  <span class="fragment">jfieldID msgID = env->GetFieldID(myClass, "msg", "Ljava/lang/String;");</span>
+  <span class="fragment">jobject msg = env->GetObjectField(self, msgID);</span>
+  <span class="fragment">jclass system = env->FindClass("Ljava/lang/System;");</span>
+  <span class="fragment">jfieldID outID = env->GetStaticFieldID(system, "out", "Ljava/io/PrintStream;");</span>
+  <span class="fragment">jobject out = env->GetStaticObjectField(system, outID);</span>
+  <span class="fragment">jclass printStream = env->FindClass("Ljava/io/PrintStream;");</span>
+  <span class="fragment">jmethodID print = env->GetMethodID(printStream, "print", "(Ljava/lang/String;)V");</span>
+  <span class="fragment">jmethodID println = env->GetMethodID(printStream, "println", "()V");</span>
+  <span class="fragment">env->CallVoidMethod(out, print, msg);</span>
+  <span class="fragment">env->CallVoidMethod(out, print, s);</span>
+  <span class="fragment">env->CallVoidMethod(out, println);</span>
+}
+            </code>
+          </pre>
+        </section>
+
+
+        <section data-background="images/background_default.jpg" class="demo">
+          <h1>Implementing native methods</h1>
+
+          <pre class="big noshadow" style="height:100%; margin: 1ex;" data-trim="true">
+            <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
+$ g++ -I $JAVA_HOME/include/ -I $JAVA_HOME/include/linux/ \
+      -shared -o <span class="fragment highlight-current-border">libNativeCall.so</span> NativeCall.cpp
+<span class="fragment">
+$ java io.simonis.NativeCall
+Exception in thread "main" java.lang.<span class="fragment highlight-current-border">UnsatisfiedLinkError</span>:
+  no NativeCall in java.library.path:
+  /usr/java/packages/lib:/usr/lib64:/lib64:/lib:/usr/lib
+	at java.base/java.lang.ClassLoader.loadLibrary(ClassLoader.java:2458)
+	at java.base/java.lang.Runtime.loadLibrary0(Runtime.java:916)
+	at java.base/java.lang.System.loadLibrary(System.java:2059)
+	at io.simonis.NativeCall.&lt;clinit&gt;(NativeCall.java:11)
+</span>
+<span class="fragment">$ java <mark class="border">-Djava.library.path=./</mark> io.simonis.NativeCall
+42
+Hello world</span>
+            </code>
+          </pre>
+
+          <p class="fragment" style="text-align:center; padding:0 1ex;">
+            There&apos;s a lot that can go wrong!
+            <a href="https://docs.oracle.com/javase/8/docs/technotes/guides/troubleshoot/clopts002.html">
+              <code>-Xcheck:jni</code> </a> is your friend :)
+            </p>
+        </section>
+
+        <!-- NOTICE: 'style="height: 100%;"' here and in the sub-sections IS CRUCIAL to get scrolling in <code> sections!!! -->
+        <section data-background="images/background_default.jpg" class="demo" style="height: 100%;">
+
+          <section class="center">
+            <h1>Demo - Native Call Stack</h1>
+          </section>
+
+          <section data-background="images/background_default.jpg" class="demo" style="height: 100%;">
+            <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+              <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
+$ LD_LIBRARY_PATH=./ jdb io.simonis.NativeCall
+&gt; stop at java.io.FileOutputStream.write(byte[],int,int)
+&gt; run
+Breakpoint hit: "thread=main", java.io.FileOutputStream.write(), line=366 bci=0
+
+main[1] where
+  [1] java.io.FileOutputStream.write (FileOutputStream.java:366)
+  [2] java.io.BufferedOutputStream.flushBuffer (BufferedOutputStream.java:125)
+  [3] java.io.BufferedOutputStream.implFlush (BufferedOutputStream.java:252)
+  [4] java.io.BufferedOutputStream.flush (BufferedOutputStream.java:240)
+  [5] java.io.PrintStream.implWrite (PrintStream.java:649)
+  [6] java.io.PrintStream.write (PrintStream.java:627)
+  [7] sun.nio.cs.StreamEncoder.writeBytes (StreamEncoder.java:291)
+  [8] sun.nio.cs.StreamEncoder.implFlushBuffer (StreamEncoder.java:386)
+  [9] sun.nio.cs.StreamEncoder.lockedFlushBuffer (StreamEncoder.java:117)
+  [10] sun.nio.cs.StreamEncoder.flushBuffer (StreamEncoder.java:104)
+  [11] java.io.OutputStreamWriter.flushBuffer (OutputStreamWriter.java:194)
+  [12] java.io.PrintStream.implWriteln (PrintStream.java:853)
+  [13] java.io.PrintStream.writeln (PrintStream.java:830)
+  [14] java.io.PrintStream.println (PrintStream.java:1,082)
+  [15] io.simonis.NativeCall.main (NativeCall.java:15)
+              </code>
+            </pre>
+          </section>
+
+          <section data-background="images/background_default.jpg" class="demo" style="height: 100%;">
+            <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+              <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
+main[1] cont
+42
+Breakpoint hit: "thread=main", java.io.FileOutputStream.write(), line=366 bci=0
+
+main[1] where
+  [1] java.io.FileOutputStream.write (FileOutputStream.java:366)
+  [2] java.io.BufferedOutputStream.flushBuffer (BufferedOutputStream.java:125)
+  [3] java.io.BufferedOutputStream.implFlush (BufferedOutputStream.java:252)
+  [4] java.io.BufferedOutputStream.flush (BufferedOutputStream.java:240)
+  [5] java.io.PrintStream.implWrite (PrintStream.java:649)
+  [6] java.io.PrintStream.write (PrintStream.java:627)
+  [7] sun.nio.cs.StreamEncoder.writeBytes (StreamEncoder.java:291)
+  [8] sun.nio.cs.StreamEncoder.implFlushBuffer (StreamEncoder.java:386)
+  [9] sun.nio.cs.StreamEncoder.lockedFlushBuffer (StreamEncoder.java:117)
+  [10] sun.nio.cs.StreamEncoder.flushBuffer (StreamEncoder.java:104)
+  [11] java.io.OutputStreamWriter.flushBuffer (OutputStreamWriter.java:194)
+  [12] java.io.PrintStream.implWrite (PrintStream.java:816)
+  [13] java.io.PrintStream.write (PrintStream.java:794)
+  [14] java.io.PrintStream.print (PrintStream.java:1,006)
+  [15] io.simonis.NativeCall.hello (native method)
+  [16] io.simonis.NativeCall.main (NativeCall.java:16)
+              </code>
+            </pre>
+          </section>
+
+          <section data-background="images/background_default.jpg" class="demo">
+            <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+              <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
+$ LD_LIBRARY_PATH=./ gdb java
+(gdb) run io.simonis.NativeCall
+Thread 2 "java" received signal SIGSEGV, Segmentation fault.
+(gdb) b writeBytes
+Breakpoint 1 at 0x7ffff4fe580c: file ../io_util.c, line 148.
+(gdb) cont
+Thread 2 "java" hit Breakpoint 1, writeBytes(..) at ../io_util.c:148
+(gdb) where
+#0  writeBytes (..) at ../io_util.c:148
+#1  0x00007ffff4fd9c6b in Java_java_io_FileOutputStream_writeBytes(..) at ..
+#2  0x00007fffdfb4610e in ?? ()
+#3  0x0000000000000008 in ?? ()
+#4  0x00007ffff002c0dc in ?? ()
+#5  0x00007ffff7d440af in ?? ()
+#6  0x00007fff6a014628 in ?? ()
+#7  0x00007fffdfb45afc in ?? ()
+#8  0xfffffffffffffff7 in ?? ()
+#9  0x00007fff6edcd4c0 in ?? ()
+#10 0x0000000000000008 in ?? ()
+#11 0x00007fff6e554078 in ?? ()
+#12 0x0000000000000000 in ?? ()
+              </code>
+            </pre>
+          </section>
+
+          <section data-background="images/background_default.jpg" class="demo" style="height: 100%;">
+            <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+              <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
+(gdb) call pns($sp, $rbp, $pc)
+"Executing pns"
+Native frames: (J=compiled Java code, j=interpreted, Vv=VM code, C=native code)
+C  [libjava.so+0x1c80c]  writeBytes+0x5a
+C  [libjava.so+0x10c6b]  Java_java_io_FileOutputStream_writeBytes+0x60
+j  java.io.FileOutputStream.writeBytes([BIIZ)V+0 java.base@23-internal
+j  java.io.FileOutputStream.write([BII)V+25 java.base@23-internal
+j  java.io.BufferedOutputStream.flushBuffer()V+20 java.base@23-internal
+j  java.io.BufferedOutputStream.implFlush()V+1 java.base@23-internal
+j  java.io.BufferedOutputStream.flush()V+15 java.base@23-internal
+j  java.io.PrintStream.implWrite([BII)V+25 java.base@23-internal
+j  java.io.PrintStream.write([BII)V+18 java.base@23-internal
+j  sun.nio.cs.StreamEncoder.writeBytes()V+81 java.base@23-internal
+j  sun.nio.cs.StreamEncoder.implFlushBuffer()V+11 java.base@23-internal
+j  sun.nio.cs.StreamEncoder.lockedFlushBuffer()V+8 java.base@23-internal
+j  sun.nio.cs.StreamEncoder.flushBuffer()V+22 java.base@23-internal
+j  java.io.OutputStreamWriter.flushBuffer()V+4 java.base@23-internal
+j  java.io.PrintStream.implWriteln(Ljava/lang/String;)V+30 java.base@23-internal
+j  java.io.PrintStream.writeln(Ljava/lang/String;)V+16 java.base@23-internal
+j  java.io.PrintStream.println(I)V+14 java.base@23-internal
+j  io.simonis.NativeCall.main([Ljava/lang/String;)V+6
+v  ~StubRoutines::call_stub 0x00007fffdfb37d21
+V  [libjvm.so+0xdcbfdd]  JavaCalls::call_helper(JavaValue*, methodHandle const&amp;, JavaCallArguments*, JavaThread*)+0x60b
+V  [libjvm.so+0x12fec92]  os::os_exception_wrapper(void (*)(JavaValue*, methodHandle const&amp;, JavaCallArguments*, JavaThread*), JavaValue*, methodHandle const&amp;, JavaCallArguments*, JavaThread*)+0x3a
+V  [libjvm.so+0xdcb9ce]  JavaCalls::call(JavaValue*, methodHandle const&amp;, JavaCallArguments*, JavaThread*)+0x3e
+V  [libjvm.so+0xeb4770]  jni_invoke_static(JNIEnv_*, JavaValue*, _jobject*, JNICallType, _jmethodID*, JNI_ArgumentPusher*, JavaThread*)+0x1a7
+V  [libjvm.so+0xec2f88]  jni_CallStaticVoidMethod+0x1e6
+C  [libjli.so+0x54d2]  invokeStaticMainWithArgs+0xb5
+C  [libjli.so+0x64d2]  JavaMain+0xbc1
+C  [libjli.so+0xc65f]  ThreadJavaMain+0x2b
+              </code>
+            </pre>
+          </section>
+
+          <section data-background="images/background_default.jpg" class="demo" style="height: 100%;">
+            <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+              <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
+(gdb) cont
+Thread 2 "java" hit Breakpoint 1, writeBytes(..) at ../io_util.c:148
+gdb) call pns($sp, $rbp, $pc)
+"Executing pns"
+Native frames: (J=compiled Java code, j=interpreted, Vv=VM code, C=native code)
+C  [libjava.so+0x1c80c]  writeBytes+0x5a
+C  [libjava.so+0x10c6b]  Java_java_io_FileOutputStream_writeBytes+0x60
+j  java.io.FileOutputStream.writeBytes([BIIZ)V+0 java.base@23-internal
+j  java.io.FileOutputStream.write([BII)V+25 java.base@23-internal
+j  java.io.BufferedOutputStream.flushBuffer()V+20 java.base@23-internal
+j  java.io.BufferedOutputStream.implFlush()V+1 java.base@23-internal
+j  java.io.BufferedOutputStream.flush()V+15 java.base@23-internal
+j  java.io.PrintStream.implWrite([BII)V+25 java.base@23-internal
+j  java.io.PrintStream.write([BII)V+18 java.base@23-internal
+j  sun.nio.cs.StreamEncoder.writeBytes()V+81 java.base@23-internal
+j  sun.nio.cs.StreamEncoder.implFlushBuffer()V+11 java.base@23-internal
+j  sun.nio.cs.StreamEncoder.lockedFlushBuffer()V+8 java.base@23-internal
+j  sun.nio.cs.StreamEncoder.flushBuffer()V+22 java.base@23-internal
+j  java.io.OutputStreamWriter.flushBuffer()V+4 java.base@23-internal
+j  java.io.PrintStream.implWrite(Ljava/lang/String;)V+23 java.base@23-internal
+j  java.io.PrintStream.write(Ljava/lang/String;)V+16 java.base@23-internal
+j  java.io.PrintStream.print(Ljava/lang/String;)V+5 java.base@23-internal
+v  ~StubRoutines::call_stub 0x00007fffdfb37d21
+V  [libjvm.so+0xdcbfdd]  JavaCalls::call_helper(JavaValue*, methodHandle const&amp;, JavaCallArguments*, JavaThread*)+0x60b
+V  [libjvm.so+0x12fec92]  os::os_exception_wrapper(void (*)(JavaValue*, methodHandle const&amp;, JavaCallArguments*, JavaThread*), JavaValue*, methodHandle const&amp;, JavaCallArguments*, JavaThread*)+0x3a
+V  [libjvm.so+0xdcb9ce]  JavaCalls::call(JavaValue*, methodHandle const&amp;, JavaCallArguments*, JavaThread*)+0x3e
+V  [libjvm.so+0xeb4cba]  jni_invoke_nonstatic(JNIEnv_*, JavaValue*, _jobject*, JNICallType, _jmethodID*, JNI_ArgumentPusher*, JavaThread*)+0x47b
+V  [libjvm.so+0xeba460]  jni_CallVoidMethodV+0x177
+C  [libNativeCall.so+0x151b]  JNIEnv_::CallVoidMethod(_jobject*, _jmethodID*, ...)+0xcf
+C  [libNativeCall.so+0x1368]  Java_io_simonis_NativeCall_hello+0x138
+j  io.simonis.NativeCall.hello(Ljava/lang/String;)V+0
+j  io.simonis.NativeCall.main([Ljava/lang/String;)V+18
+v  ~StubRoutines::call_stub 0x00007fffdfb37d21
+V  [libjvm.so+0xdcbfdd]  JavaCalls::call_helper(JavaValue*, methodHandle const&amp;, JavaCallArguments*, JavaThread*)+0x60b
+V  [libjvm.so+0x12fec92]  os::os_exception_wrapper(void (*)(JavaValue*, methodHandle const&amp;, JavaCallArguments*, JavaThread*), JavaValue*, methodHandle const&amp;, JavaCallArguments*, JavaThread*)+0x3a
+V  [libjvm.so+0xdcb9ce]  JavaCalls::call(JavaValue*, methodHandle const&amp;, JavaCallArguments*, JavaThread*)+0x3e
+V  [libjvm.so+0xeb4770]  jni_invoke_static(JNIEnv_*, JavaValue*, _jobject*, JNICallType, _jmethodID*, JNI_ArgumentPusher*, JavaThread*)+0x1a7
+V  [libjvm.so+0xec2f88]  jni_CallStaticVoidMethod+0x1e6
+C  [libjli.so+0x54d2]  invokeStaticMainWithArgs+0xb5
+C  [libjli.so+0x64d2]  JavaMain+0xbc1
+C  [libjli.so+0xc65f]  ThreadJavaMain+0x2b
+              </code>
+            </pre>
+          </section>
+        </section>
+
 
         <section data-background="images/background_last.jpg">
           <h2 style="text-transform: none;">
@@ -712,9 +982,9 @@ hljs.registerLanguage('terminal', function(hljs) {
       hljs.C_LINE_COMMENT_MODE,
       {
         className: 'title',
-        lexemes: /[$()>_a-zA-Z0-9]+/,
-        keywords: "$ (gdb) hsdb>",
-        begin: /^\$ |\(gdb\)|hsdb> /,
+        lexemes: /[$()>_a-zA-Z0-9\]\[]+/,
+        keywords: "$ (gdb) hsdb> main[1] >",
+        begin: /^\$ |\(gdb\)|hsdb> |main\[1\] |> /,
         end: /[^\\]\n/,
 	contains: [
           hljs.COMMENT('//', '$', { endsParent: true })
