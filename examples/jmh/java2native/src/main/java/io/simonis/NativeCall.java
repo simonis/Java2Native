@@ -30,9 +30,6 @@ public class NativeCall {
   static {
     System.loadLibrary("NativeCall");
   }
-  native void nMethod();
-  native int nativeMethod(int i, String s, byte[] b);
-  static native int nativeMethod(double d, Object o);
 
   @CompilerControl(CompilerControl.Mode.DONT_INLINE)
   public static void emptyStaticMethod() {
