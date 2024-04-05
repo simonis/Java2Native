@@ -11,10 +11,10 @@ void JNICALL Java_io_simonis_NativeCall_hello(JNIEnv* env, jobject self, jstring
   jclass myClass = env->GetObjectClass(self);
   jfieldID msgID = env->GetFieldID(myClass, "msg", "Ljava/lang/String;");
   jobject msg = env->GetObjectField(self, msgID);
-  jclass system = env->FindClass("Ljava/lang/System;");
+  jclass system = env->FindClass("java/lang/System");
   jfieldID outID = env->GetStaticFieldID(system, "out", "Ljava/io/PrintStream;");
   jobject out = env->GetStaticObjectField(system, outID);
-  jclass printStream = env->FindClass("Ljava/io/PrintStream;");
+  jclass printStream = env->FindClass("java/io/PrintStream");
   jmethodID print = env->GetMethodID(printStream, "print", "(Ljava/lang/String;)V");
   jmethodID println = env->GetMethodID(printStream, "println", "()V");
   env->CallVoidMethod(out, print, msg);

@@ -22,6 +22,12 @@
     <link rel="stylesheet" href="reveal.js/lib/css/monokai_sublime.css" />
 
     <style type="text/css">
+/* display preprocessor directives italic (could also handle 'hljs-meta-keyword' (for "include" and 'hljs-meta-string' for the inlcude file in the future) */
+.hljs-meta {
+  color: #7571ff;
+  font-style: italic;
+}
+
 .scrollable {
     bottom: 0px;
     overflow-y: auto  !important;
@@ -443,6 +449,22 @@ pre.after.small::after {
   (delete-region p1 p2)
   (insert resultStr)
 )
+(defun make-fragment-simple-index (p1 p2)
+  "Wraps the selection into 'fragment' <span>s without any quoting."
+  (interactive "r")
+  (setq inputStr (buffer-substring-no-properties p1 p2))
+  (setq resultStr (concat "<span class=\"fragment\" data-fragment-index=\"1\">" (concat inputStr "</span>")))
+  (delete-region p1 p2)
+  (insert resultStr)
+)
+(defun make-fragment-simple-index-border (p1 p2)
+  "Wraps the selection into 'fragment' <span>s without any quoting."
+  (interactive "r")
+  (setq inputStr (buffer-substring-no-properties p1 p2))
+  (setq resultStr (concat "<span class=\"fragment highlight-current-border\" data-fragment-index=\"1\">" (concat inputStr "</span>")))
+  (delete-region p1 p2)
+  (insert resultStr)
+)
 (defun quote-fragment (p1 p2)
   "Quotes '&', '<' and '>'."
   (interactive "r")
@@ -456,6 +478,8 @@ pre.after.small::after {
 
 (global-set-key (kbd "C-f") 'make-fragment)
 (global-set-key (kbd "C-S-f") 'make-fragment-simple)
+(global-set-key (kbd "C-ö") 'make-fragment-simple-index)
+(global-set-key (kbd "C-S-b") 'make-fragment-simple-index-border)
 (global-set-key (kbd "C-S-q") 'quote-fragment)
 ;; revert key-binding
 ;; (global-set-key (kbd "C-f") 'forward-char)
@@ -609,18 +633,21 @@ NativeCall.methodCallingNative  avgt    5  123.906 ± 0.418  ns/op
             - the Java Native Interface</h1>
 
           <ul>
-            <li><a href="https://web.archive.org/web/20120626120230/http://java.sun.com/docs/books/jni/html/intro.html#2186">JDK 1.0</a> supported a non-standard "<em>native method interface</em>"</li>
+            <li><a href="https://web.archive.org/web/20120626120230/http://java.sun.com/docs/books/jni/html/intro.html#2186">JDK 1.0</a> had a non-standard "<em>Native Method Interface</em>"</li>
             <li><a href="https://web.archive.org/web/20120728074805/http://java.sun.com/docs/books/jni/">JDK 1.1</a>
               introduced the standard JNI</li>
             <li><a href="https://web.archive.org/web/20120626120230/http://java.sun.com/docs/books/jni/html/intro.html#2186">JDK 1.2</a>
               rewrote internal native methods to JNI<br/><br/></li>
 
-            <li>Contains the JNI <a href="https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/invocation.html">JIN Invocation API</a>
+            <li>Contains the <a href="https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/invocation.html">JNI Invocation API</a>
               <ul>
                 <li>Attach to a running JVM</li>
                 <li>Create and control a JVM from native code</li>
-              </ul>
+              </ul><br/>
             </li>
+
+            <li>The basis for the <a href="https://docs.oracle.com/javase/8/docs/platform/jvmti/jvmti.html">
+                JVM Tools Interface (JVMTI)</a></li>
           </ul>
         </section>
 
@@ -635,7 +662,7 @@ package io.simonis;
 public class NativeCall {
 
   String msg = "Hello ";
-  public native int simple();
+  public static native int simple();
   public native void hello(String s);
 
   static {
@@ -644,9 +671,8 @@ public class NativeCall {
   }
 
   public static void main(String[] args) {
-    NativeCall nativeCall = new NativeCall();
-    System.out.println(nativeCall.simple());
-    nativeCall.hello("world");
+    System.out.println(simple());
+    new NativeCall().hello("world");
   }
 }
             </code>
@@ -672,23 +698,32 @@ $ javah io.simonis.NativeCall                                // JDK &lt;  11</sp
 // Method:    simple
 // Signature: ()I
 JNIEXPORT
-jint JNICALL Java_io_simonis_NativeCall_simple(JNIEnv*, jclass);
+jint JNICALL <span class="fragment highlight-current-border" data-fragment-index="6">Java</span>_<span class="fragment highlight-current-border" data-fragment-index="8">io_simonis_NativeCall</span>_<span class="fragment highlight-current-border" data-fragment-index="10">simple</span>(<span class="fragment highlight-current-border" data-fragment-index="12">JNIEnv</span>*, <span class="fragment highlight-current-border" data-fragment-index="14">jclass</span>);
 
 // Class:     io_simonis_NativeCall
 // Method:    hello
 // Signature: (Ljava/lang/String;)V
 JNIEXPORT
-void JNICALL Java_io_simonis_NativeCall_hello(JNIEnv*, jobject, jstring);
+void JNICALL <span class="fragment highlight-current-border" data-fragment-index="6">Java</span>_<span class="fragment highlight-current-border" data-fragment-index="8">io_simonis_NativeCall</span>_<span class="fragment highlight-current-border" data-fragment-index="10">hello</span>(<span class="fragment highlight-current-border" data-fragment-index="12">JNIEnv</span>*, <span class="fragment highlight-current-border" data-fragment-index="16">jobject</span>, jstring);
             </code>
           </pre>
+
+          <p class="fragment" style="text-align:center; padding:0 1ex;">
+            Use
+            <a href="https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/invocation.html#JNJI_OnLoad">
+              <code>JNI_OnLoad()</code></a>/<a href="https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html#registering_native_methods">
+              <code>RegisterNatives()</code></a> if you don't like the name mangling :)
+          </p>
         </section>
 
 
-        <section data-background="images/background_default.jpg" class="demo">
-          <h1>Implementing native methods</h1>
+        <section data-background="images/background_default.jpg" class="demo" style="height: 100%;">
 
-          <pre class="big noshadow" style="height:100%; margin: 1ex;" data-trim="true">
-            <code class="cpp" data-trim="true" data-noescape="true" style="height:100%">
+          <section data-background="images/background_default.jpg" class="demo">
+            <h1>Implementing native methods</h1>
+
+            <pre class="big noshadow" style="height:100%; margin: 1ex;" data-trim="true">
+              <code class="cpp" data-trim="true" data-noescape="true" style="height:100%">
 #include &lt;jni.h&gt;
 #include "io_simonis_NativeCall.h"
 
@@ -696,40 +731,39 @@ extern "C" JNIEXPORT
 jint JNICALL Java_io_simonis_NativeCall_simple(JNIEnv* env, jclass cls) {
   return 42;
 }
-            </code>
-          </pre>
-        </section>
+              </code>
+            </pre>
+          </section>
 
-        <section data-background="images/background_default.jpg" class="demo">
-          <h1>Implementing native methods</h1>
+          <section data-background="images/background_default.jpg" class="demo">
+            <h1>Implementing native methods</h1>
 
-          <pre class="big noshadow" style="height:100%; margin: 1ex;" data-trim="true">
-            <code class="cpp" data-trim="true" data-noescape="true" style="height:100%">
+            <pre class="big noshadow" style="height:100%; margin: 1ex;" data-trim="true">
+              <code class="cpp" data-trim="true" data-noescape="true" style="height:100%">
 extern "C" JNIEXPORT
 void JNICALL Java_io_simonis_NativeCall_hello(JNIEnv* env, jobject self, jstring s) {
   <span class="fragment">jclass myClass = env->GetObjectClass(self);</span>
   <span class="fragment">jfieldID msgID = env->GetFieldID(myClass, "msg", "Ljava/lang/String;");</span>
   <span class="fragment">jobject msg = env->GetObjectField(self, msgID);</span>
-  <span class="fragment">jclass system = env->FindClass("Ljava/lang/System;");</span>
+  <span class="fragment">jclass system = env->FindClass("java/lang/System");</span>
   <span class="fragment">jfieldID outID = env->GetStaticFieldID(system, "out", "Ljava/io/PrintStream;");</span>
   <span class="fragment">jobject out = env->GetStaticObjectField(system, outID);</span>
-  <span class="fragment">jclass printStream = env->FindClass("Ljava/io/PrintStream;");</span>
+  <span class="fragment">jclass printStream = env->FindClass("java/io/PrintStream");</span>
   <span class="fragment">jmethodID print = env->GetMethodID(printStream, "print", "(Ljava/lang/String;)V");</span>
   <span class="fragment">jmethodID println = env->GetMethodID(printStream, "println", "()V");</span>
   <span class="fragment">env->CallVoidMethod(out, print, msg);</span>
   <span class="fragment">env->CallVoidMethod(out, print, s);</span>
   <span class="fragment">env->CallVoidMethod(out, println);</span>
 }
-            </code>
-          </pre>
-        </section>
+              </code>
+            </pre>
+          </section>
 
+          <section data-background="images/background_default.jpg" class="demo">
+            <h1>Implementing native methods</h1>
 
-        <section data-background="images/background_default.jpg" class="demo">
-          <h1>Implementing native methods</h1>
-
-          <pre class="big noshadow" style="height:100%; margin: 1ex;" data-trim="true">
-            <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
+            <pre class="big noshadow" style="height:100%; margin: 1ex;" data-trim="true">
+              <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
 $ g++ -I $JAVA_HOME/include/ -I $JAVA_HOME/include/linux/ \
       -shared -o <span class="fragment highlight-current-border">libNativeCall.so</span> NativeCall.cpp
 <span class="fragment">
@@ -745,14 +779,37 @@ Exception in thread "main" java.lang.<span class="fragment highlight-current-bor
 <span class="fragment">$ java <mark class="border">-Djava.library.path=./</mark> io.simonis.NativeCall
 42
 Hello world</span>
-            </code>
-          </pre>
+              </code>
+            </pre>
 
-          <p class="fragment" style="text-align:center; padding:0 1ex;">
-            There&apos;s a lot that can go wrong!
-            <a href="https://docs.oracle.com/javase/8/docs/technotes/guides/troubleshoot/clopts002.html">
-              <code>-Xcheck:jni</code> </a> is your friend :)
+            <p class="fragment" style="text-align:center; padding:0 1ex;">
+              There&apos;s a lot that can go wrong!
+              <a href="https://docs.oracle.com/javase/8/docs/technotes/guides/troubleshoot/clopts002.html">
+                <code>-Xcheck:jni</code> </a> is your friend :)
             </p>
+          </section>
+
+          <section data-background="images/background_default.jpg" class="demo">
+            <h1>Implementing native methods</h1>
+
+            <pre class="big noshadow" style="height:100%; margin: 1ex;" data-trim="true">
+              <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
+$ java <mark class="border">-Xcheck:jni</mark> -Djava.library.path=./ io.simonis.NativeCall
+<span class="fragment">42
+Hello
+WARNING in native method: JNI call made without checking \
+  exceptions when required to from CallVoidMethodV
+	at io.simonis.NativeCall.hello(Native Method)
+	at io.simonis.NativeCall.main(NativeCall.java:16)
+world
+WARNING in native method: JNI call made without checking \
+  exceptions when required to from CallVoidMethodV
+	at io.simonis.NativeCall.hello(Native Method)
+	at io.simonis.NativeCall.main(NativeCall.java:16)</span> 
+              </code>
+            </pre>
+          </section>
+
         </section>
 
         <!-- NOTICE: 'style="height: 100%;"' here and in the sub-sections IS CRUCIAL to get scrolling in <code> sections!!! -->
@@ -929,6 +986,241 @@ C  [libjli.so+0x64d2]  JavaMain+0xbc1
 C  [libjli.so+0xc65f]  ThreadJavaMain+0x2b
               </code>
             </pre>
+          </section>
+        </section>
+
+
+        <section data-background="images/background_default.jpg" class="demo" style="height: 100%;">
+
+          <section data-background="images/background_default.jpg" class="demo">
+            <h1>The JNI Invocation API</h1>
+
+            <pre class="big noshadow" style="height:100%; margin: 1ex;" data-trim="true">
+              <code class="cpp" data-trim="true" data-noescape="true" style="height:100%">
+#include &lt;stdio.h&gt;
+#include "jni.h"
+
+int main(int argc, char** argv) {
+  JavaVM *jvm;
+  JNIEnv *env;
+  JavaVMInitArgs vm_args;
+  vm_args.version = JNI_VERSION_1_8;
+  vm_args.nOptions = 0;
+  int ret =<span class="fragment highlight-current-border" data-fragment-index="1"> JNI_CreateJavaVM(&amp;jvm, (void**)&amp;env, &amp;vm_args)</span>;
+  jclass cls = <span class="fragment highlight-current-border" data-fragment-index="2">env-&gt;FindClass("io/simonis/NativeCall")</span>;
+  jmethodID simple = <span class="fragment highlight-current-border" data-fragment-index="3">env-&gt;GetStaticMethodID(cls, "simple", "()I")</span>;
+  printf("%d\n",<span class="fragment highlight-current-border" data-fragment-index="4"> env-&gt;CallStaticIntMethod(cls, simple)</span>);
+  jvm-&gt;DestroyJavaVM();
+}
+              </code>
+            </pre>
+          </section>
+
+          <section data-background="images/background_default.jpg" class="demo">
+            <h1>The JNI Invocation API</h1>
+
+            <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+              <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
+$ g++ <span class="fragment highlight-current-border" data-fragment-index="1">-I $JAVA_HOME/include/ -I $JAVA_HOME/include/linux/</span> \
+      <span class="fragment highlight-current-border" data-fragment-index="2">-L $JAVA_HOME/lib/server</span> -o java java.cpp <span class="fragment highlight-current-border" data-fragment-index="2">-ljvm</span>
+<span class="fragment" data-fragment-index="3">
+$ <span class="fragment highlight-current-border" data-fragment-index="5">JAVA_TOOL_OPTIONS=-Xlog:gc*</span> \
+  <span class="fragment highlight-current-border" data-fragment-index="4">LD_LIBRARY_PATH=$JAVA_HOME/lib/server</span> ./java
+Picked up JAVA_TOOL_OPTIONS: -Xlog:gc*
+[0.006s][info][gc] Using G1
+[0.010s][info][gc,init] Version: 17.0.9+8-LTS (release)
+<span class="fragment highlight-current-border" data-fragment-index="6">42</span></span>
+              </code>
+            </pre>
+          </section>
+        </section>
+
+
+        <section data-background="images/background_default.jpg" class="demo" style="height: 100%;">
+
+          <section data-background="images/background_default.jpg" class="demo">
+            <h1>What happens at a native call?</h1>
+
+            <ul>
+              <li class="fragment">Register shuffling for native calling conventions
+                <ul>
+                  <li>Add <code>JNIEnv</code> (and <code>jclass</code> for static methods) arguments</li>
+                </ul>
+              </li>
+              <li class="fragment">Wrap non-primitive types in <a href="https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/design.html#global_and_local_references"><code>JNIHandles</code></a>
+                <ul>
+                  <li><a href="">Local References</a> / <a href="https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html#global_references">Global References</a></li>
+                </ul>
+              </li>
+              <li class="fragment">Transition <a href="https://github.com/openjdk/jdk/blob/040c93565c0dff6270911eb9e58d78aa01bbb925/src/hotspot/share/utilities/globalDefinitions.hpp#L984-L1013">thread state</a> from <code>in_Java</code> to <code>in_native</code></li>
+              <li class="fragment">Do the actual call</li>
+              <li class="fragment">Transition <a href="https://github.com/openjdk/jdk/blob/040c93565c0dff6270911eb9e58d78aa01bbb925/src/hotspot/share/utilities/globalDefinitions.hpp#L984-L1013">thread state</a> from <code>in_native</code> to <code>in_Java</code></li>
+              <li class="fragment">Unwrap and clean-up <code>JNIHandles</code></li>
+              <li class="fragment">Check for pending exceptions</li>
+              <li class="fragment">Check for a <a href="https://simonis.github.io/hotspot_internals/hotspot_internals.xhtml">Safepoint</a></li>
+            </ul>
+          </section>
+
+
+          <section data-background="images/background_default.jpg" class="demo">
+            <h1>Calling Conventions</h1>
+
+            <ul>
+              <li>The Interpreter <a href="https://github.com/openjdk/jdk/blob/21867c929a2f2c961148f2cd1e79d672ac278d27/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L67">passes all arguments on the stack</a>
+              </li>
+              <li><a href="https://github.com/openjdk/jdk/blob/21867c929a2f2c961148f2cd1e79d672ac278d27/src/hotspot/cpu/x86/assembler_x86.hpp#L97">Comiled Calling Conventions</a> are a shifted version of the Native CC</li>
+            </ul>
+            <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+              <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
+------|---------------------------------------------------
+  C   | <span class="fragment highlight-current-border" data-fragment-index="1">c_rarg0</span>   <span class="fragment highlight-current-border" data-fragment-index="2">c_rarg1</span>  c_rarg2 c_rarg3 c_rarg4 c_rarg5
+------|---------------------------------------------------
+Win32 | rcx       rdx      r8      r9      rdi*    rsi*
+Sys V | rdi       rsi      rdx     rcx     r8      r9
+------|---------------------------------------------------
+Java  | j_rarg5   <span class="fragment highlight-current-border" data-fragment-index="1">j_rarg0</span>  <span class="fragment highlight-current-border" data-fragment-index="2">j_rarg1</span> j_rarg2 j_rarg3 j_rarg4
+------|---------------------------------------------------
+              </code>
+            </pre>
+            <ul>
+              <li class="fragment">Allows calling native methods without argument shuffling (<code>JNIEnv*</code>)</li>
+              <li class="fragment">Static native methods requier an extra slot for the <code>jclass</code> argument</li>
+            </ul>
+          </section>
+
+          <section data-background="images/background_default.jpg" class="demo">
+            <h1>Accessing the Java heap from Native</h1>
+
+            <ul>
+              <li>Java objects anly accessible through references (GC-safe)</li>
+              <li>Too slow for primitive array data:
+                <ol class="fragment">
+                  <li>Copy array data -> safe but slow</li>
+                  <li>Block GC (<a href="https://shipilev.net/jvm/anatomy-quarks/9-jni-critical-gclocker/"><code>GCLocker</code></a>)
+                    -> fast but dangerous</li>
+                  <li>Pin object/region -> fast and safe
+                    <ul class="fragment">
+                      <li>Only Shenandoah</li>
+                      <li>..and G1 since JDK 22 (<a href="https://bugs.openjdk.org/browse/JDK-8276094">JEP 423: Region Pinning for G1</a>)</li>
+                    </ul>
+                  </li>
+                </ol>
+              </li>
+            </ul>
+          </section>
+
+          <section data-background="images/background_default.jpg" class="demo" style="height: 100%;">
+
+            <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+              <code class="java" data-trim="true" data-noescape="true" style="height:100%">
+public class NativeCallGC {
+
+  <span class="fragment highlight-current-border border-no-bottom" data-fragment-index="1">public static native void block(int sec);                     </span>
+  <span class="fragment highlight-current-border border-no-bottom-top" data-fragment-index="1">public static native void elements(byte[] b, int sec);        </span>
+  <span class="fragment highlight-current-border border-no-top" data-fragment-index="1">public static native void elementsCritical(byte[] b, int sec);</span>
+
+  public static void main(String[] args) throws Exception {
+    <span class="fragment highlight-current-border border-no-bottom" data-fragment-index="3">new Thread() {                                                      </span>
+    <span class="fragment highlight-current-border border-no-bottom-top" data-fragment-index="3">  public void run() {                                               </span>
+    <span class="fragment highlight-current-border border-no-bottom-top" data-fragment-index="3">    while(true) {                                                   </span>
+    <span class="fragment highlight-current-border border-no-bottom-top" data-fragment-index="3">      try { Thread.sleep(1_000); } catch (InterruptedException e) {}</span>
+    <span class="fragment highlight-current-border border-no-bottom-top" data-fragment-index="3">      System.gc();                                                  </span>
+    <span class="fragment highlight-current-border border-no-bottom-top" data-fragment-index="3">    }                                                               </span>
+    <span class="fragment highlight-current-border border-no-bottom-top" data-fragment-index="3">  }                                                                 </span>
+    <span class="fragment highlight-current-border border-no-top" data-fragment-index="3">}.start();                                                          </span>
+    <span class="fragment highlight-current-border border-no-bottom" data-fragment-index="5">int sec = Integer.parseInt(args[1]);                        </span>
+    <span class="fragment highlight-current-border border-no-bottom-top" data-fragment-index="5">byte[] b = new byte[42];                                    </span>
+    <span class="fragment highlight-current-border border-no-bottom-top" data-fragment-index="5">switch (args[0]) {                                          </span>
+    <span class="fragment highlight-current-border border-no-bottom-top" data-fragment-index="5">  case "block" : block(sec); break;                         </span>
+    <span class="fragment highlight-current-border border-no-bottom-top" data-fragment-index="5">  case "elements" : elements(b, sec); break;                </span>
+    <span class="fragment highlight-current-border border-no-top" data-fragment-index="5">  case "elementsCritical" : elementsCritical(b, sec); break;</span>
+              </code>
+            </pre>
+
+          </section>
+
+          <section data-background="images/background_default.jpg" class="demo">
+
+            <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+              <code class="cpp" data-trim="true" data-noescape="true" style="height:100%">
+void block(JNIEnv* env, jclass cls, jint s) {
+  sleep(s);
+}
+
+void elements(JNIEnv* env, jclass cls, jbyteArray b, jint s) {
+  jboolean copy;
+  jbyte* jb = (jbyte*)<span class="fragment highlight-current-border" data-fragment-index="1">env-&gt;GetByteArrayElements(b, &amp;copy)</span>;
+  printf("GetByteArrayElements() returned %s\n", <span class="fragment highlight-current-border" data-fragment-index="2">copy ? "copy":"original"</span>);
+  sleep(s);
+  env-&gt;ReleaseByteArrayElements(b, jb, copy ? JNI_ABORT : 0);
+}
+
+void elementsCritical(JNIEnv* env, jclass cls, jbyteArray b, jint s) {
+  jboolean copy;
+  jbyte* jb = (jbyte*)<span class="fragment highlight-current-border" data-fragment-index="3">env-&gt;GetPrimitiveArrayCritical(b, &amp;copy)</span>;
+  printf("GetPrimitiveArrayCritical() returned %s\n", copy ? "copy":"original");
+  sleep(s);
+  env-&gt;ReleasePrimitiveArrayCritical(b, jb, copy ? JNI_ABORT : 0);
+}
+              </code>
+            </pre>
+
+          </section>
+
+          <section data-background="images/background_default.jpg" class="demo">
+
+            <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+              <code class="cpp" data-trim="true" data-noescape="true" style="height:100%">
+jint JNI_OnLoad(JavaVM *vm, void *reserved) {
+  JNIEnv* env;
+  vm-&gt;GetEnv((void**)&amp;env, JNI_VERSION_1_8);
+  jclass cls = <span class="fragment highlight-current-border" data-fragment-index="1">env-&gt;FindClass("io/simonis/NativeCallGC")</span>;
+  <span class="fragment highlight-current-border border-no-bottom" data-fragment-index="2">static JNINativeMethod methods[] = {                       </span>
+  <span class="fragment highlight-current-border border-no-bottom-top" data-fragment-index="2">  {"block", "(I)V", (void*)&amp;block},                        </span>
+  <span class="fragment highlight-current-border border-no-bottom-top" data-fragment-index="2">  {"elements", "([BI)V", (void*)&amp;elements},                </span>
+  <span class="fragment highlight-current-border border-no-top" data-fragment-index="2">  {"elementsCritical", "([BI)V", (void*)&amp;elementsCritical},</span>
+  };
+  <span class="fragment highlight-current-border" data-fragment-index="3">env-&gt;RegisterNatives(cls, methods, 3)</span>;
+  return JNI_VERSION_1_8;
+}
+              </code>
+            </pre>
+
+          </section>
+
+          <section class="center">
+            <h1>Demo - <code>GCLocker</code></h1>
+          </section>
+
+          <section data-background="images/background_default.jpg" class="demo" style="height: 100%;">
+
+            <pre class="big noshadow" style="height:101%; margin: 0;" data-trim="true">
+              <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
+$ java -Djava.library.path=examples/cpp/ -Xlog:gc -showversion \
+       -cp examples/java/ io.simonis.NativeCallGC block 3
+<span class="fragment">[0.006s][info][gc] Using G1
+openjdk version "21" 2023-09-19 LTS
+[1,058s][info][gc] GC(0) Pause Full (System.gc()) 2M->1M(28M) 9,267ms
+[2,064s][info][gc] GC(1) Pause Full (System.gc()) 1M->1M(16M) 6,033ms
+[3,070s][info][gc] GC(2) Pause Full (System.gc()) 1M->1M(16M) 5,804ms
+$</span><span class="fragment"> java -Djava.library.path=examples/cpp/ -Xlog:gc -showversion \
+       -cp examples/java/ io.simonis.NativeCallGC elements 3</span>
+<span class="fragment">[0.006s][info][gc] Using G1
+openjdk version "21" 2023-09-19 LTS
+<span class="fragment highlight-current-border">GetByteArrayElements() returned copy</span>
+[1,058s][info][gc] GC(0) Pause Full (System.gc()) 2M->1M(28M) 9,673ms
+[2,064s][info][gc] GC(1) Pause Full (System.gc()) 1M->1M(16M) 6,158ms
+[3,070s][info][gc] GC(2) Pause Full (System.gc()) 1M->1M(16M) 5,701ms
+$</span><span class="fragment"> java -Djava.library.path=examples/cpp/ -Xlog:gc -showversion \
+       -cp examples/java/ io.simonis.NativeCallGC elementsCritcal 3</span>
+<span class="fragment">[0.006s][info][gc] Using G1
+openjdk version "21" 2023-09-19 LTS
+<span class="fragment highlight-current-border">GetPrimitiveArrayCritical() returned original</span>
+[3,048s][info][gc] GC(0) Pause Young (Normal) <span class="fragment highlight-current-border">(GCLocker Initiated GC)</span> 2M->1M(504M) 1,218ms
+[3,056s][info][gc] GC(1) Pause Full (System.gc()) 1M->1M(16M) 8,099ms</span>
+              </code>
+            </pre>
+
           </section>
         </section>
 
