@@ -11,10 +11,11 @@ import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
-@State(Scope.Thread)
+@State(Scope.Benchmark)
 @Warmup(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
 @Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
 @Fork(value = 1,
@@ -29,6 +30,16 @@ public class NativeCall {
 
   static {
     System.loadLibrary("NativeCall");
+  }
+
+  byte[] array;
+
+  @Param({"1"})
+  int length;
+
+  @Setup
+  public void setup() {
+    array = new byte[length];
   }
 
   @CompilerControl(CompilerControl.Mode.DONT_INLINE)
@@ -63,7 +74,9 @@ public class NativeCall {
   }
 
   public static native void emptyStaticNativeMethod();
-  public static native long staticNativeMethod(long l, double d);
+  public static native void emptyStaticNativeCriticalMethod();
+  public static native long staticNativeMethod(byte[] b);
+  public static native long staticNativeCriticalMethod(byte[] b);
   @CompilerControl(CompilerControl.Mode.DONT_INLINE)
   public static long staticNativeMethodWithManyArgsHelper(long l1, long l2, long l3, long l4, long l5, double d) {
     return staticNativeMethodWithManyArgs(l1, l2, l3, l4, l5, d);
@@ -102,8 +115,18 @@ public class NativeCall {
   }
 
   @Benchmark
-  public static void staticMethodCallingStaticNativeWithArgs() {
-    staticNativeMethod(42l, 42.0d);
+  public static void staticMethodCallingStaticNativeCritical() {
+    emptyStaticNativeCriticalMethod();
+  }
+
+  @Benchmark
+  public void methodCallingStaticNative() {
+    staticNativeMethod(array);
+  }
+
+  @Benchmark
+  public void methodCallingStaticNativeCritical() {
+    staticNativeCriticalMethod(array);
   }
 
   @Benchmark

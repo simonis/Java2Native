@@ -402,6 +402,12 @@ pre.after.small::after {
     font-size: 0.5em;
     font-family: "Roboto Condensed", "sans-serif";
 }
+
+table tbody tr td em {
+    color: #eee8d5;
+    font-weight:bold;
+    font-style: italic;
+}
     </style>
 
     <!-- Printing and PDF exports -->
@@ -1039,7 +1045,7 @@ Picked up JAVA_TOOL_OPTIONS: -Xlog:gc*
         <section data-background="images/background_default.jpg" class="demo" style="height: 100%;">
 
           <section data-background="images/background_default.jpg" class="demo">
-            <h1>What happens at a native call?</h1>
+            <h1>What happens at a Native Call?</h1>
 
             <ul>
               <li class="fragment">Register shuffling for native calling conventions
@@ -1143,21 +1149,21 @@ public class NativeCallGC {
 
             <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
               <code class="cpp" data-trim="true" data-noescape="true" style="height:100%">
-void block(JNIEnv* env, jclass cls, jint s) {
-  sleep(s);
+void <span class="fragment highlight-current-border" data-fragment-index="1">block</span>(JNIEnv* env, jclass cls, jint s) {
+  <span class="fragment highlight-current-border" data-fragment-index="1">sleep(s)</span>;
 }
 
-void elements(JNIEnv* env, jclass cls, jbyteArray b, jint s) {
+void <span class="fragment highlight-current-border" data-fragment-index="3">elements</span>(JNIEnv* env, jclass cls, jbyteArray b, jint s) {
   jboolean copy;
-  jbyte* jb = (jbyte*)<span class="fragment highlight-current-border" data-fragment-index="1">env-&gt;GetByteArrayElements(b, &amp;copy)</span>;
-  printf("GetByteArrayElements() returned %s\n", <span class="fragment highlight-current-border" data-fragment-index="2">copy ? "copy":"original"</span>);
+  jbyte* jb = (jbyte*)<span class="fragment highlight-current-border" data-fragment-index="3">env-&gt;GetByteArrayElements(b, &amp;copy)</span>;
+  printf("GetByteArrayElements() returned %s\n", <span class="fragment highlight-current-border" data-fragment-index="5">copy ? "copy":"original"</span>);
   sleep(s);
   env-&gt;ReleaseByteArrayElements(b, jb, copy ? JNI_ABORT : 0);
 }
 
-void elementsCritical(JNIEnv* env, jclass cls, jbyteArray b, jint s) {
+void <span class="fragment highlight-current-border" data-fragment-index="7">elementsCritical</span>(JNIEnv* env, jclass cls, jbyteArray b, jint s) {
   jboolean copy;
-  jbyte* jb = (jbyte*)<span class="fragment highlight-current-border" data-fragment-index="3">env-&gt;GetPrimitiveArrayCritical(b, &amp;copy)</span>;
+  jbyte* jb = (jbyte*)<span class="fragment highlight-current-border" data-fragment-index="7">env-&gt;GetPrimitiveArrayCritical(b, &amp;copy)</span>;
   printf("GetPrimitiveArrayCritical() returned %s\n", copy ? "copy":"original");
   sleep(s);
   env-&gt;ReleasePrimitiveArrayCritical(b, jb, copy ? JNI_ABORT : 0);
@@ -1171,16 +1177,16 @@ void elementsCritical(JNIEnv* env, jclass cls, jbyteArray b, jint s) {
 
             <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
               <code class="cpp" data-trim="true" data-noescape="true" style="height:100%">
-jint JNI_OnLoad(JavaVM *vm, void *reserved) {
+jint JNI_OnLoad(<span class="fragment highlight-current-border" data-fragment-index="1">JavaVM *vm</span>, void *reserved) {
   JNIEnv* env;
-  vm-&gt;GetEnv((void**)&amp;env, JNI_VERSION_1_8);
-  jclass cls = <span class="fragment highlight-current-border" data-fragment-index="1">env-&gt;FindClass("io/simonis/NativeCallGC")</span>;
-  <span class="fragment highlight-current-border border-no-bottom" data-fragment-index="2">static JNINativeMethod methods[] = {                       </span>
-  <span class="fragment highlight-current-border border-no-bottom-top" data-fragment-index="2">  {"block", "(I)V", (void*)&amp;block},                        </span>
-  <span class="fragment highlight-current-border border-no-bottom-top" data-fragment-index="2">  {"elements", "([BI)V", (void*)&amp;elements},                </span>
-  <span class="fragment highlight-current-border border-no-top" data-fragment-index="2">  {"elementsCritical", "([BI)V", (void*)&amp;elementsCritical},</span>
+  <span class="fragment highlight-current-border" data-fragment-index="3">vm-&gt;GetEnv((void**)&amp;env, JNI_VERSION_1_8)</span>;
+  jclass cls = <span class="fragment highlight-current-border" data-fragment-index="5">env-&gt;FindClass("io/simonis/NativeCallGC")</span>;
+  <span class="fragment highlight-current-border border-no-bottom" data-fragment-index="7">static JNINativeMethod methods[] = {                       </span>
+  <span class="fragment highlight-current-border border-no-bottom-top" data-fragment-index="7">  {"block", "(I)V", (void*)&amp;block},                        </span>
+  <span class="fragment highlight-current-border border-no-bottom-top" data-fragment-index="7">  {"elements", "([BI)V", (void*)&amp;elements},                </span>
+  <span class="fragment highlight-current-border border-no-top" data-fragment-index="7">  {"elementsCritical", "([BI)V", (void*)&amp;elementsCritical},</span>
   };
-  <span class="fragment highlight-current-border" data-fragment-index="3">env-&gt;RegisterNatives(cls, methods, 3)</span>;
+  <span class="fragment highlight-current-border" data-fragment-index="6">env-&gt;RegisterNatives(cls, methods, 3)</span>;
   return JNI_VERSION_1_8;
 }
               </code>
@@ -1224,6 +1230,221 @@ openjdk version "21" 2023-09-19 LTS
           </section>
         </section>
 
+
+        <section data-background="images/background_default.jpg" class="demo" style="height: 100%;">
+
+          <section data-background="images/background_default.jpg" class="demo">
+
+            <h1>Thread State Transitions and <a href="hottps://simonis.github.io/hotspot_internals/hotspot_internals.xhtml#/6/2">Safepoints</a></h1>
+
+            <ul>
+              <li>HotSpot uses a <em>cooperative</em> suspension model</li>
+              <li>All threads need to come to a safepoint quickly if required
+                <ul>
+                  <li>Running <code>in_Java</code> (Interpreted): change interpreter dispatch table</li>
+                  <li>Running <code>in_Java</code> (JIT-compiled): read global safepoint polling page</li>
+                  <li>Running <code>in_native</code> (JNI): no need to stop<br/>
+                    - native code accesses oops through handles<br/>
+                    - block when returning from JNI or up-calling to Java</li>
+                </ul>
+              </li>
+              <li class="fragment"><em class="bold">Safepointing and Thread State have to be synchronized!</em>
+                <ol class="fragment">
+                  <li>Full Memory Barrier (<a href="https://bugs.openjdk.org/browse/JDK-8187809"><code>-XX:+/-UseMembar</code></a>)</li>
+                  <li><code>mprotect(2)</code> trick / <code>membarrier(2)</code></li>
+                </ol>
+              </li>
+            </ul>
+          </section>
+
+          <section data-background="images/background_default.jpg" class="demo">
+
+            <h2>Calling empty native method (ns/op)</h2>
+
+            <table style="border: 1px solid; border-collapse: separate;">
+              <thead>
+                <tr>
+                  <th style="border-right: 6px double; border-bottom: 6px double;"></th>
+                  <th style="border-right: 1px solid; border-bottom: 6px double;">m5.metal<br/>Xeon 8175</th>
+                  <th style="border-right: 1px solid; border-bottom: 6px double;">my laptop<br/>i7-8650U</th>
+                  <th style="border-right: 1px solid; border-bottom: 6px double;">m6g.metal<br/>Graviton 2</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="border-right: 6px double;">JDK 8</td>
+                  <td style="text-align: right; border-right: 1px solid;"><em>5.7</em></td>
+                  <td style="text-align: right; border-right: 1px solid;"><em>9.8</em></td>
+                  <td style="text-align: right; border-right: 1px solid;">27.8</td>
+                </tr>
+                <tr>
+                  <td style="border-right: 6px double; border-bottom: 6px double;">JDK 8 +UseMembar</td>
+                  <td style="text-align: right; border-bottom: 6px double; border-right: 1px solid;">10.7</td>
+                  <td style="text-align: right; border-bottom: 6px double; border-right: 1px solid;">19.6</td>
+                  <td style="text-align: right; border-bottom: 6px double; border-right: 1px solid;"><em>26.7</em></td>
+                </tr>
+                <tr>
+                  <td style="border-right: 6px double;">JDK 11</td>
+                  <td style="text-align: right; border-right: 1px solid;">5.7</td>
+                  <td style="text-align: right; border-right: 1px solid;">11.1</td>
+                  <td style="text-align: right; border-right: 1px solid;">27.6</td>
+                </tr>
+                <tr>
+                  <td style="border-right: 6px double; border-bottom: 6px double;">JDK 11 +UseMembar</td>
+                  <td style="text-align: right; border-bottom: 6px double; border-right: 1px solid;"><em>10.9</em></td>
+                  <td style="text-align: right; border-bottom: 6px double; border-right: 1px solid;"><em>20.1</em></td>
+                  <td style="text-align: right; border-bottom: 6px double; border-right: 1px solid;"><em>27.6</em></td>
+                </tr>
+                <tr>
+                  <td style="border-right: 6px double; border-bottom: 6px double;">JDK 17</td>
+                  <td style="text-align: right; border-bottom: 6px double; border-right: 1px solid;"><em>10.6</em></td>
+                  <td style="text-align: right; border-bottom: 6px double; border-right: 1px solid;"><em>22.6</em></td>
+                  <td style="text-align: right; border-bottom: 6px double; border-right: 1px solid;"><em>17.6</em></td>
+                </tr>
+                <tr>
+                  <td style="border-right: 6px double;">JDK 21</td>
+                  <td style="text-align: right; border-right: 1px solid;"><em>11.0</em></td>
+                  <td style="text-align: right; border-right: 1px solid;"><em>20.1</em></td>
+                  <td style="text-align: right; border-right: 1px solid;"><em>17.6</em></td>
+                </tr>
+                <tr>
+                  <td style="border-right: 6px double;">JDK 21 +UseSystemM..B..</td>
+                  <td style="text-align: right; border-right: 1px solid;">5.5</td>
+                  <td style="text-align: right; border-right: 1px solid;">10.2</td>
+                  <td style="text-align: right; border-right: 1px solid;">17.6</td>
+                </tr>
+              </tbody>
+            </table>
+
+          </section>
+<!--
+          <section data-background="images/background_default.jpg" class="demo">
+
+            <h2>Calling empty native method (ns/op)</h2>
+
+            <table style="border: 1px solid; border-collapse: separate;">
+              <thead>
+                <tr>
+                  <th style="border-right: 6px double;"></th>
+                  <th>JDK 8</th>
+                  <th>JDK 8<br/>+UseMembar</th>
+                  <th>JDK 11</th>
+                  <th>JDK 11<br/>+UseMembar</th>
+                  <th>JDK 17</th>
+                  <th>JDK 21</th>
+                  <th>JDK 11<br/>+UseSystemMB</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="border-right: 6px double;">m5.metal</td>
+                  <td style="text-align: right; border-right: 1px solid;"><em class="bold" style="color: #eee8d5;">5.7</em></td>
+                  <td style="text-align: right; ">10.7</td>
+                  <td style="text-align: right; ">5.7</td>
+                  <td style="text-align: right; "><em class="bold" style="color: #eee8d5;">10.9</em></td>
+                  <td style="text-align: right; "><em class="bold" style="color: #eee8d5;">10.6</em></td>
+                  <td style="text-align: right; "><em class="bold" style="color: #eee8d5;">11.0</em></td>
+                  <td style="text-align: right; ">5.5</td>
+                </tr>
+                <tr>
+                  <td style="border-right: 6px double;">my laptop</td>
+                  <td style="text-align: right; "><em class="bold" style="color: #eee8d5;">5.7</em></td>
+                  <td style="text-align: right; ">10.7</td>
+                  <td style="text-align: right; ">5.7</td>
+                  <td style="text-align: right; "><em class="bold" style="color: #eee8d5;">10.9</em></td>
+                  <td style="text-align: right; "><em class="bold" style="color: #eee8d5;">10.6</em></td>
+                  <td style="text-align: right; "><em class="bold" style="color: #eee8d5;">11.0</em></td>
+                  <td style="text-align: right; ">5.5</td>
+                </tr>
+                <tr>
+                  <td style="border-right: 6px double;">m6g.metal</td>
+                  <td style="text-align: right; ">27.8</td>
+                  <td style="text-align: right; "><em class="bold" style="color: #eee8d5;">26.7</em></td>
+                  <td style="text-align: right; ">27.6</td>
+                  <td style="text-align: right; "><em class="bold" style="color: #eee8d5;">27.6</em></td>
+                  <td style="text-align: right; "><em class="bold" style="color: #eee8d5;">17.6</em></td>
+                  <td style="text-align: right; "><em class="bold" style="color: #eee8d5;">17.6</em></td>
+                  <td style="text-align: right; ">17.6</td>
+                </tr>
+              </tbody>
+            </table>
+
+          </section>
+-->
+        </section>
+
+
+        <section data-background="images/background_default.jpg" class="demo" style="height: 100%;">
+
+          <section data-background="images/background_default.jpg" class="demo">
+
+            <h1>Critical Native Functions</h1>
+
+            
+          </section>
+        </section>
+
+        <section data-background="images/background_default.jpg" class="demo" style="height: 100%;">
+
+          <section data-background="images/background_default.jpg">
+            <h1>References</h1>
+
+            <div style="display: inline-block; text-align: left;">
+              <p>Thread state transitions:</p>
+              <ul>
+                <li><a href="https://bugs.openjdk.org/browse/JDK-5075546">
+                    JDK-5075546: remove memory barrier on native transitions</a></li>
+                <li><a href="https://bugs.openjdk.org/browse/JDK-6401008">
+                    JDK-6401008: re-add -XX:+UseMembar support in mustang</a></li>
+                <li><a href="https://bugs.openjdk.org/browse/JDK-8187809">
+                    JDK-8187809: UseMembar should be set true and deprecate the flag</a></li>
+                <li><a href="https://bugs.openjdk.org/browse/JDK-8213436">
+                    JDK-8213436: Obsolete UseMembar</a></li>
+                <li><a href="https://bugs.openjdk.org/browse/JDK-8292591">
+                    JDK-8292591: Experimentally add back barrier-less Java thread transitions</a></li>
+                <li><a href="https://bugs.openjdk.org/browse/JDK-8303210">
+                    JDK-8303210: Make UseSystemMemoryBarrier available as product flag</a></li>
+                <li><a href="https://stackoverflow.com/questions/43722456/behavior-of-mprotect-with-multiple-threads">
+                    Behavior of mprotect with multiple threads</a></li>
+                <li><a href="https://groups.google.com/g/mechanical-sympathy/c/envzRs2KNOY">
+                    Memory model of mprotect</a></li>
+                <li><a href="https://man7.org/linux/man-pages/man2/mprotect.2.html">
+                    Manpage: <code>mprotect(2)</code></a></li>
+                <li><a href="https://man7.org/linux/man-pages/man2/membarrier.2.html">
+                    Manpage: <code>membarrier(2)</code></a></li>
+                <li><a href="">
+                    </a></li>
+              </ul>
+            </div>
+          </section>
+
+          <section data-background="images/background_default.jpg">
+            <h1>References</h1>
+
+            <div style="display: inline-block; text-align: left;">
+              <p>Critical Natives / Nalim:</p>
+              <ul>
+                <li><a href="https://bugs.openjdk.org/browse/JDK-8289302">
+                    JDK-8289302: Restore CriticalJNINatives</a></li>
+                <li><a href="https://bugs.openjdk.org/browse/JDK-8254693">
+                    JDK-8254693: Add Panama feature to pass heap segments to native code</a></li>
+                <li><a href="https://stackoverflow.com/questions/36298111/is-it-possible-to-use-sun-misc-unsafe-to-call-c-functions-without-jni
+">
+                    Is it possible to use sun.misc.Unsafe to call C functions without JNI?</a></li>
+                <li><a href="https://jokerconf.com/en/talks/27af781e3b00447ba7bf8bbb387fb83c/">
+                    Calling native methods without a JNI overhead</a></li>
+                <li><a href="https://bugs.openjdk.org/browse/JDK-7013347">
+                    JDK-7013347: allow crypto functions to be called inline to enhance performance</a></li>
+                <li><a href="https://bugs.openjdk.org/browse/JDK-8233343">
+                    JDK-8233343: Deprecate -XX:+CriticalJNINatives flag which implements JavaCritical native functions</a></li>
+                <li><a href="https://bugs.openjdk.org/browse/JDK-8258192">
+                    JDK-8258192: Obsolete the CriticalJNINatives flag</a></li>
+                <li><a href="https://github.com/apangin/nalim">
+                    https://github.com/apangin/nalim</a></li>
+              </ul>
+            </div>
+          </section>
+        </section>
 
         <section data-background="images/background_last.jpg">
           <h2 style="text-transform: none;">
