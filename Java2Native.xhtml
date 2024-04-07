@@ -804,7 +804,7 @@ void JNICALL Java_io_simonis_NativeCall_hello(JNIEnv* env, jobject self, jstring
 
             <pre class="big noshadow" style="height:100%; margin: 1ex;" data-trim="true">
               <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
-$ g++ -I $JAVA_HOME/include/ -I $JAVA_HOME/include/linux/ \
+$ g++ -fPIC -I $JAVA_HOME/include/ -I $JAVA_HOME/include/linux/ \
       -shared -o <span class="fragment highlight-current-border">libNativeCall.so</span> NativeCall.cpp
 <span class="fragment">
 $ java io.simonis.NativeCall
@@ -1079,6 +1079,7 @@ Picked up JAVA_TOOL_OPTIONS: -Xlog:gc*
         <section data-background="images/background_default.jpg" class="demo" style="height: 100%;">
 
           <section data-background="images/background_default.jpg" class="demo">
+
             <h1>What happens at a Native Call?</h1>
 
             <ul>
@@ -1101,6 +1102,1171 @@ Picked up JAVA_TOOL_OPTIONS: -Xlog:gc*
             </ul>
           </section>
 
+
+          <section data-background="images/background_default.jpg" class="demo">
+
+            <h1>Native Call Details</h1>
+
+            <ul>
+              <li><a href="https://github.com/openjdk/jdk/blob/d771ec6296bd3bb17ac2dd79671fdb6f154b4ea5/src/hotspot/cpu/x86/templateInterpreterGenerator_x86.cpp#L793">
+                  Interpreter native method stub</a> (default)</li>
+              <li><a href="https://github.com/openjdk/jdk/blob/d771ec6296bd3bb17ac2dd79671fdb6f154b4ea5/src/hotspot/cpu/x86/sharedRuntime_x86_64.cpp#L1666-L1688">
+                  Compiled native wrapper</a> (for <em>hot</em> methods)</li>
+              <li><code>-XX:+/-PreferInterpreterNativeStubs</code></li>
+              <li><code>-XX:+PrintCompilation</code> signals this with an "<code>n</code>"<br/>
+                and compilation level "<code>0</code>":
+              </li>
+            </ul><br/>
+            <pre class="big noshadow fragment" style="height:100%; margin: 0;" data-trim="true">
+              <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
+$ java -XX:+PrintCompilation ...
+...
+ 48  6  <span class="fragment highlight-current-border">n 0</span>  NativeCallDemo::sayHello (native)
+                  </code>
+                </pre>
+          </section>
+
+          <section data-background="images/background_default.jpg" class="demo">
+            <h1>Calling Conventions</h1>
+
+            <ul>
+              <li>The Interpreter <a href="https://github.com/openjdk/jdk/blob/21867c929a2f2c961148f2cd1e79d672ac278d27/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L67">passes all arguments on the stack</a>
+              </li>
+              <li><a href="https://github.com/openjdk/jdk/blob/21867c929a2f2c961148f2cd1e79d672ac278d27/src/hotspot/cpu/x86/assembler_x86.hpp#L97">Comiled Calling Conventions</a> are a shifted version of the Native CC</li>
+            </ul>
+            <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+              <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
+------|---------------------------------------------------
+  C   | <span class="fragment highlight-current-border" data-fragment-index="1">c_rarg0</span>   <span class="fragment highlight-current-border" data-fragment-index="2">c_rarg1</span>  c_rarg2 c_rarg3 c_rarg4 c_rarg5
+------|---------------------------------------------------
+Win32 | rcx       rdx      r8      r9      rdi*    rsi*
+Sys V | rdi       rsi      rdx     rcx     r8      r9
+------|---------------------------------------------------
+Java  | j_rarg5   <span class="fragment highlight-current-border" data-fragment-index="1">j_rarg0</span>  <span class="fragment highlight-current-border" data-fragment-index="2">j_rarg1</span> j_rarg2 j_rarg3 j_rarg4
+------|---------------------------------------------------
+              </code>
+            </pre>
+            <ul>
+              <li class="fragment">Allows calling native methods without argument shuffling (<code>JNIEnv*</code>)</li>
+              <li class="fragment">Static native methods requier an extra slot for the <code>jclass</code> argument</li>
+            </ul>
+          </section>
+
+          <section data-background="images/background_default.jpg" class="demo">
+
+            <h1>Native Call Demo</h1>
+
+            <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+              <code class="java" data-trim="true" data-noescape="true" style="height:100%">
+package io.simonis;
+
+public class NativeCallDemo {
+
+  public static <span class="fragment highlight-current-border" data-fragment-index="1">native void sayHello(String s)</span>;
+
+  static {
+    System.loadLibrary("NativeCallDemo");
+  }
+
+  public static void main(String[] args) throws Exception {
+    <span class="fragment highlight-current-border border-no-bottom" data-fragment-index="3">for (int i = 0; i &lt; 15_000; i++) {</span>
+    <span class="fragment highlight-current-border border-no-bottom-top" data-fragment-index="3">  sayHello("JavaLand");           </span>
+    <span class="fragment highlight-current-border border-no-top" data-fragment-index="3">}                                 </span>
+  }
+}
+              </code>
+            </pre>
+          </section>
+
+          <section data-background="images/background_default.jpg" class="demo">
+
+            <h1>Native Call Demo</h1>
+
+            <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+              <code class="cpp" data-trim="true" data-noescape="true" style="height:100%">
+void <span class="fragment highlight-current-border" data-fragment-index="3">sayHello</span>(JNIEnv* env, jclass cls, jstring s) {
+  static int counter = 0;
+  if (counter++ % 10000 == 0) {
+    <span class="fragment highlight-current-border" data-fragment-index="1">printf("Hello %s\n", env-&gt;GetStringUTFChars(s, 0)</span>);
+  }
+}
+<span class="fragment" data-fragment-index="5">
+jint <span class="fragment highlight-current-border" data-fragment-index="5">JNI_OnLoad</span>(JavaVM *vm, void *reserved) {
+  <span class="fragment" data-fragment-index="7">JNIEnv* env;</span>
+  <span class="fragment" data-fragment-index="7">vm-&gt;GetEnv((void**)&amp;env, JNI_VERSION_1_8);</span>
+  <span class="fragment" data-fragment-index="9">jclass cls = env-&gt;FindClass("io/simonis/NativeCallDemo");</span>
+  <span class="fragment" data-fragment-index="11">static JNINativeMethod methods[] = {</span>
+  <span class="fragment" data-fragment-index="11">  {<span class="fragment highlight-current-border" data-fragment-index="11">"sayHello"</span>, "(Ljava/lang/String;)V", (void*)<span class="fragment highlight-current-border" data-fragment-index="11">&amp;sayHello</span>},</span>
+  <span class="fragment" data-fragment-index="11">};</span>
+  <span class="fragment" data-fragment-index="13">env-&gt;RegisterNatives(cls, methods, 1);</span>
+  <span class="fragment" data-fragment-index="15">printf("sayHello() address = %p\n", <span class="fragment highlight-current-border" data-fragment-index="17">&amp;sayHello</span>);</span>
+  <span class="fragment" data-fragment-index="19">return JNI_VERSION_1_8;
+}</span></span>
+              </code>
+            </pre>
+          </section>
+
+          <section class="center">
+            <h1>Demo - <code>Native Call</code></h1>
+          </section>
+
+          <section data-background="images/background_default.jpg" class="demo" style="height: 100%;">
+
+            <pre class="big noshadow" style="height:101%; margin: 0;" data-trim="true">
+              <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
+$ java -Djava.library.path=examples/cpp/ -Xbatch \
+       -XX:+PrintCompilation -XX:+UnlockDiagnosticVMOptions \
+       -XX:+PrintInterpreter -XX:+PrintNativeNMethods \
+       -cp examples/java/ io.simonis.NativeCallDemo
+...
+----------------------------------------------------------------------
+native method entry point (kind = native)  [0x00007fffdfb46a00, 0x00007fffdfb479c8]  4040 bytes
+
+--------------------------------------------------------------------------------
+  0x00007fffdfb46a00:   mov    0x10(%rbx),%rcx              ;;@FILE: /priv/simonisv/OpenJDK/Git/jdk/src/hotspot/cpu/x86/templateInterpreterGenerator_x86.cpp
+                                                            ;;  800:   address entry_point = __ pc();
+                                                            ;;  809:   __ movptr(rcx, constMethod);
+  0x00007fffdfb46a04:   movzwl 0x2e(%rcx),%ecx              ;;  810:   __ load_unsigned_short(rcx, size_of_parameters);
+  0x00007fffdfb46a08:   pop    %rax                         ;;  819:   __ pop(rax);                                       // get return address
+  0x00007fffdfb46a09:   lea    -0x8(%rsp,%rcx,8),%r14       ;;  824:   __ lea(rlocals, Address(rsp, rcx, Interpreter::stackElementScale(), -wordSize));
+  0x00007fffdfb46a0e:   pushq  $0x0                         ;;  828:   __ push(NULL_WORD);
+  0x00007fffdfb46a13:   pushq  $0x0                         ;;  831:   __ push(NULL_WORD);
+  0x00007fffdfb46a18:   push   %rax                         ;;  631:   __ push(rax);        // save return address
+  0x00007fffdfb46a19:   push   %rbp                         ;;  632:   __ enter();          // save old &amp; set new rbp
+  0x00007fffdfb46a1a:   mov    %rsp,%rbp
+  0x00007fffdfb46a1d:   push   %r13                         ;;  633:   __ push(rbcp);        // set sender sp
+  0x00007fffdfb46a1f:   pushq  $0x0                         ;;  634:   __ push(NULL_WORD); // leave last_sp as null
+  0x00007fffdfb46a24:   mov    0x10(%rbx),%r13              ;;  635:   __ movptr(rbcp, Address(rbx, Method::const_offset()));      // get ConstMethod*
+  0x00007fffdfb46a28:   lea    0x38(%r13),%r13              ;;  636:   __ lea(rbcp, Address(rbcp, ConstMethod::codes_offset())); // get codebase
+  0x00007fffdfb46a2c:   push   %rbx                         ;;  637:   __ push(rbx);        // save Method*
+  0x00007fffdfb46a2d:   mov    0x10(%rbx),%rdx              ;;  639:   __ load_mirror(rdx, rbx, rscratch2);
+  0x00007fffdfb46a31:   mov    0x8(%rdx),%rdx
+  0x00007fffdfb46a35:   mov    0x20(%rdx),%rdx
+  0x00007fffdfb46a39:   mov    0x78(%rdx),%rdx
+  0x00007fffdfb46a3d:   mov    (%rdx),%rdx
+  0x00007fffdfb46a40:   push   %rdx                         ;;  640:   __ push(rdx);
+  0x00007fffdfb46a41:   mov    0x18(%rbx),%rdx              ;;  643:     __ movptr(rdx, Address(rbx, in_bytes(Method::method_data_offset())));
+  0x00007fffdfb46a45:   test   %rdx,%rdx                    ;;  644:     __ testptr(rdx, rdx);
+  0x00007fffdfb46a48:   je     0x00007fffdfb46a55           ;;  645:     __ jcc(Assembler::zero, method_data_continue);
+  0x00007fffdfb46a4e:   add    $0x160,%rdx                  ;;  646:     __ addptr(rdx, in_bytes(MethodData::data_offset()));
+  0x00007fffdfb46a55:   push   %rdx                         ;;  647:     __ bind(method_data_continue);
+                                                            ;;  648:     __ push(rdx);      // set the mdp (method data pointer)
+  0x00007fffdfb46a56:   mov    0x10(%rbx),%rdx              ;;  653:   __ movptr(rdx, Address(rbx, Method::const_offset()));
+  0x00007fffdfb46a5a:   mov    0x8(%rdx),%rdx               ;;  654:   __ movptr(rdx, Address(rdx, ConstMethod::constants_offset()));
+  0x00007fffdfb46a5e:   mov    0x18(%rdx),%rdx              ;;  655:   __ movptr(rdx, Address(rdx, ConstantPool::cache_offset()));
+  0x00007fffdfb46a62:   push   %rdx                         ;;  656:   __ push(rdx); // set constant pool cache
+  0x00007fffdfb46a63:   mov    %r14,%rax                    ;;  658:   __ movptr(rax, rlocals);
+  0x00007fffdfb46a66:   sub    %rbp,%rax                    ;;  659:   __ subptr(rax, rbp);
+  0x00007fffdfb46a69:   shr    $0x3,%rax                    ;;  660:   __ shrptr(rax, Interpreter::logStackElementSize);  // rax = rlocals - fp();
+  0x00007fffdfb46a6d:   push   %rax                         ;;  661:   __ push(rax); // set relativized rlocals, see frame::interpreter_frame_locals()
+  0x00007fffdfb46a6e:   pushq  $0x0                         ;;  664:     __ push(0); // no bcp
+  0x00007fffdfb46a73:   pushq  $0xfffffffffffffff7          ;;  669:   __ push(frame::interpreter_frame_initial_sp_offset);
+  0x00007fffdfb46a78:   mov    0x30(%rbx),%eax              ;;  838:   __ movl(rax, access_flags);
+  0x00007fffdfb46a7b:   test   $0x100,%eax                  ;;  841:     __ testl(rax, JVM_ACC_NATIVE);
+  0x00007fffdfb46a80:   jne    0x00007fffdfb46a9a           ;;  842:     __ jcc(Assembler::notZero, L);
+  0x00007fffdfb46a86:   movabs $0x7ffff7331698,%rdi         ;;  843:     __ stop("tried to execute non-native method as native");
+  0x00007fffdfb46a90:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb46a94:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb46a99:   hlt    
+  0x00007fffdfb46a9a:   test   $0x400,%eax                  ;;  844:     __ bind(L);
+                                                            ;;  848:     __ testl(rax, JVM_ACC_ABSTRACT);
+  0x00007fffdfb46a9f:   je     0x00007fffdfb46ab9           ;;  849:     __ jcc(Assembler::zero, L);
+  0x00007fffdfb46aa5:   movabs $0x7ffff73316c8,%rdi         ;;  850:     __ stop("tried to execute abstract method in interpreter");
+  0x00007fffdfb46aaf:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb46ab3:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb46ab8:   hlt    
+  0x00007fffdfb46ab9:   movb   $0x1,0x4c9(%r15)             ;;  851:     __ bind(L);
+                                                            ;;  865:   __ movbool(do_not_unlock_if_synchronized, true);
+  0x00007fffdfb46ac1:   mov    0x18(%rbx),%rax              ;;  410:     __ movptr(rax, Address(rbx, Method::method_data_offset()));
+  0x00007fffdfb46ac5:   test   %rax,%rax                    ;;  411:     __ testptr(rax, rax);
+  0x00007fffdfb46ac8:   je     0x00007fffdfb46aea           ;;  412:     __ jccb(Assembler::zero, no_mdo);
+  0x00007fffdfb46aca:   mov    0x11c(%rax),%ecx             ;;  417:     __ increment_mask_and_jump(mdo_invocation_counter, mask, rcx, overflow);
+  0x00007fffdfb46ad0:   add    $0x2,%ecx
+  0x00007fffdfb46ad3:   mov    %ecx,0x11c(%rax)
+  0x00007fffdfb46ad9:   and    0x130(%rax),%ecx
+  0x00007fffdfb46adf:   je     0x00007fffdfb47898
+  0x00007fffdfb46ae5:   jmpq   0x00007fffdfb46c3b           ;;  418:     __ jmp(done);
+  0x00007fffdfb46aea:   mov    0x20(%rbx),%rax              ;;  420:   __ bind(no_mdo);
+                                                            ;;  425:   __ get_method_counters(rbx, rax, done);
+  0x00007fffdfb46aee:   test   %rax,%rax
+  0x00007fffdfb46af1:   jne    0x00007fffdfb46c29
+  0x00007fffdfb46af7:   callq  0x00007fffdfb46b01
+  0x00007fffdfb46afc:   jmpq   0x00007fffdfb46c1c
+  0x00007fffdfb46b01:   mov    %rbx,%rsi
+  0x00007fffdfb46b04:   lea    0x8(%rsp),%rax
+  0x00007fffdfb46b09:   mov    %r13,-0x40(%rbp)
+  0x00007fffdfb46b0d:   cmpq   $0x0,-0x10(%rbp)
+  0x00007fffdfb46b12:   je     0x00007fffdfb46b2c
+  0x00007fffdfb46b18:   movabs $0x7ffff6ecd950,%rdi
+  0x00007fffdfb46b22:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb46b26:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb46b2b:   hlt    
+  0x00007fffdfb46b2c:   cmp    0x17fe089d(%rip),%r12        # 0x00007ffff7b273d0
+  0x00007fffdfb46b33:   je     0x00007fffdfb46b4d
+ ;; call_VM_base: heap base corrupted?
+  0x00007fffdfb46b39:   movabs $0x7ffff70a62b8,%rdi
+  0x00007fffdfb46b43:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb46b47:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb46b4c:   hlt    
+  0x00007fffdfb46b4d:   mov    %r15,%rdi
+  0x00007fffdfb46b50:   vzeroupper 
+  0x00007fffdfb46b53:   mov    %rbp,0x3f0(%r15)
+  0x00007fffdfb46b5a:   mov    %rax,0x3e0(%r15)
+  0x00007fffdfb46b61:   test   $0xf,%spl
+  0x00007fffdfb46b65:   je     0x00007fffdfb46b7d
+  0x00007fffdfb46b6b:   sub    $0x8,%rsp
+  0x00007fffdfb46b6f:   callq  0x00007ffff5fbcb1a = InterpreterRuntime::build_method_counters(JavaThread*, Method*)
+  0x00007fffdfb46b74:   add    $0x8,%rsp
+  0x00007fffdfb46b78:   jmpq   0x00007fffdfb46b82
+  0x00007fffdfb46b7d:   callq  0x00007ffff5fbcb1a = InterpreterRuntime::build_method_counters(JavaThread*, Method*)
+  0x00007fffdfb46b82:   push   %rax
+  0x00007fffdfb46b83:   push   %rdi
+  0x00007fffdfb46b84:   push   %rsi
+  0x00007fffdfb46b85:   push   %rdx
+  0x00007fffdfb46b86:   push   %rcx
+  0x00007fffdfb46b87:   push   %r8
+  0x00007fffdfb46b89:   push   %r9
+  0x00007fffdfb46b8b:   push   %r10
+  0x00007fffdfb46b8d:   push   %r11
+  0x00007fffdfb46b8f:   test   $0xf,%spl
+  0x00007fffdfb46b93:   je     0x00007fffdfb46bab
+  0x00007fffdfb46b99:   sub    $0x8,%rsp
+  0x00007fffdfb46b9d:   callq  0x00007ffff55e8d58 = Thread::current()
+  0x00007fffdfb46ba2:   add    $0x8,%rsp
+  0x00007fffdfb46ba6:   jmpq   0x00007fffdfb46bb0
+  0x00007fffdfb46bab:   callq  0x00007ffff55e8d58 = Thread::current()
+  0x00007fffdfb46bb0:   pop    %r11
+  0x00007fffdfb46bb2:   pop    %r10
+  0x00007fffdfb46bb4:   pop    %r9
+  0x00007fffdfb46bb6:   pop    %r8
+  0x00007fffdfb46bb8:   pop    %rcx
+  0x00007fffdfb46bb9:   pop    %rdx
+  0x00007fffdfb46bba:   pop    %rsi
+  0x00007fffdfb46bbb:   pop    %rdi
+  0x00007fffdfb46bbc:   cmp    %rax,%r15
+  0x00007fffdfb46bbf:   je     0x00007fffdfb46bd9
+ ;; MacroAssembler::call_VM_base: rdi not callee saved?
+  0x00007fffdfb46bc5:   movabs $0x7ffff70a6430,%rdi
+  0x00007fffdfb46bcf:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb46bd3:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb46bd8:   hlt    
+  0x00007fffdfb46bd9:   pop    %rax
+  0x00007fffdfb46bda:   movq   $0x0,0x3e0(%r15)
+  0x00007fffdfb46be5:   movq   $0x0,0x3f0(%r15)
+  0x00007fffdfb46bf0:   movq   $0x0,0x3e8(%r15)
+  0x00007fffdfb46bfb:   vzeroupper 
+  0x00007fffdfb46bfe:   cmpq   $0x0,0x8(%r15)
+  0x00007fffdfb46c03:   je     0x00007fffdfb46c0e
+  0x00007fffdfb46c09:   jmpq   0x00007fffdfb38c00
+  0x00007fffdfb46c0e:   mov    -0x40(%rbp),%r13
+  0x00007fffdfb46c12:   mov    -0x38(%rbp),%r14
+  0x00007fffdfb46c16:   lea    0x0(%rbp,%r14,8),%r14
+  0x00007fffdfb46c1b:   retq   
+  0x00007fffdfb46c1c:   mov    0x20(%rbx),%rax
+  0x00007fffdfb46c20:   test   %rax,%rax
+  0x00007fffdfb46c23:   je     0x00007fffdfb46c3b
+  0x00007fffdfb46c29:   mov    0xc(%rax),%ecx               ;;  427:   __ increment_mask_and_jump(invocation_counter, mask, rcx, overflow);
+  0x00007fffdfb46c2c:   add    $0x2,%ecx
+  0x00007fffdfb46c2f:   mov    %ecx,0xc(%rax)
+  0x00007fffdfb46c32:   and    0x24(%rax),%ecx
+  0x00007fffdfb46c35:   je     0x00007fffdfb47898
+  0x00007fffdfb46c3b:   cmpq   $0x0,0x530(%r15)             ;;  428:   __ bind(done);
+                                                            ;;  874:   __ bind(continue_after_compile);
+                                                            ;;  756:   __ cmpptr(Address(thread, JavaThread::shadow_zone_safe_limit()), NULL_WORD);
+  0x00007fffdfb46c43:   jne    0x00007fffdfb46c5d           ;;  757:   __ jcc(Assembler::notEqual, L_good_limit);
+  0x00007fffdfb46c49:   movabs $0x7ffff7331638,%rdi         ;;  758:   __ stop("shadow zone safe limit is not initialized");
+  0x00007fffdfb46c53:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb46c57:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb46c5c:   hlt    
+  0x00007fffdfb46c5d:   cmpq   $0x0,0x538(%r15)             ;;  759:   __ bind(L_good_limit);
+                                                            ;;  762:   __ cmpptr(Address(thread, JavaThread::shadow_zone_growth_watermark()), NULL_WORD);
+  0x00007fffdfb46c65:   jne    0x00007fffdfb46c7f           ;;  763:   __ jcc(Assembler::notEqual, L_good_watermark);
+  0x00007fffdfb46c6b:   movabs $0x7ffff7331668,%rdi         ;;  764:   __ stop("shadow zone growth watermark is not initialized");
+  0x00007fffdfb46c75:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb46c79:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb46c7e:   hlt    
+  0x00007fffdfb46c7f:   cmp    0x538(%r15),%rsp             ;;  765:   __ bind(L_good_watermark);
+                                                            ;;  770:   __ cmpptr(rsp, Address(thread, JavaThread::shadow_zone_growth_watermark()));
+  0x00007fffdfb46c86:   ja     0x00007fffdfb46d44           ;;  771:   __ jcc(Assembler::above, L_done);
+  0x00007fffdfb46c8c:   mov    %eax,-0x1000(%rsp)           ;;  774:     __ bang_stack_with_offset(p*page_size);
+  0x00007fffdfb46c93:   mov    %eax,-0x2000(%rsp)           ;;  774:     __ bang_stack_with_offset(p*page_size);
+  0x00007fffdfb46c9a:   mov    %eax,-0x3000(%rsp)           ;;  774:     __ bang_stack_with_offset(p*page_size);
+  0x00007fffdfb46ca1:   mov    %eax,-0x4000(%rsp)           ;;  774:     __ bang_stack_with_offset(p*page_size);
+  0x00007fffdfb46ca8:   mov    %eax,-0x5000(%rsp)           ;;  774:     __ bang_stack_with_offset(p*page_size);
+  0x00007fffdfb46caf:   mov    %eax,-0x6000(%rsp)           ;;  774:     __ bang_stack_with_offset(p*page_size);
+  0x00007fffdfb46cb6:   mov    %eax,-0x7000(%rsp)           ;;  774:     __ bang_stack_with_offset(p*page_size);
+  0x00007fffdfb46cbd:   mov    %eax,-0x8000(%rsp)           ;;  774:     __ bang_stack_with_offset(p*page_size);
+  0x00007fffdfb46cc4:   mov    %eax,-0x9000(%rsp)           ;;  774:     __ bang_stack_with_offset(p*page_size);
+  0x00007fffdfb46ccb:   mov    %eax,-0xa000(%rsp)           ;;  774:     __ bang_stack_with_offset(p*page_size);
+  0x00007fffdfb46cd2:   mov    %eax,-0xb000(%rsp)           ;;  774:     __ bang_stack_with_offset(p*page_size);
+  0x00007fffdfb46cd9:   mov    %eax,-0xc000(%rsp)           ;;  774:     __ bang_stack_with_offset(p*page_size);
+  0x00007fffdfb46ce0:   mov    %eax,-0xd000(%rsp)           ;;  774:     __ bang_stack_with_offset(p*page_size);
+  0x00007fffdfb46ce7:   mov    %eax,-0xe000(%rsp)           ;;  774:     __ bang_stack_with_offset(p*page_size);
+  0x00007fffdfb46cee:   mov    %eax,-0xf000(%rsp)           ;;  774:     __ bang_stack_with_offset(p*page_size);
+  0x00007fffdfb46cf5:   mov    %eax,-0x10000(%rsp)          ;;  774:     __ bang_stack_with_offset(p*page_size);
+  0x00007fffdfb46cfc:   mov    %eax,-0x11000(%rsp)          ;;  774:     __ bang_stack_with_offset(p*page_size);
+  0x00007fffdfb46d03:   mov    %eax,-0x12000(%rsp)          ;;  774:     __ bang_stack_with_offset(p*page_size);
+  0x00007fffdfb46d0a:   mov    %eax,-0x13000(%rsp)          ;;  774:     __ bang_stack_with_offset(p*page_size);
+  0x00007fffdfb46d11:   mov    %eax,-0x14000(%rsp)          ;;  774:     __ bang_stack_with_offset(p*page_size);
+  0x00007fffdfb46d18:   mov    %eax,-0x15000(%rsp)          ;;  774:     __ bang_stack_with_offset(p*page_size);
+  0x00007fffdfb46d1f:   mov    %eax,-0x16000(%rsp)          ;;  774:     __ bang_stack_with_offset(p*page_size);
+  0x00007fffdfb46d26:   mov    %eax,-0x17000(%rsp)          ;;  774:     __ bang_stack_with_offset(p*page_size);
+  0x00007fffdfb46d2d:   mov    %eax,-0x18000(%rsp)          ;;  774:     __ bang_stack_with_offset(p*page_size);
+  0x00007fffdfb46d34:   cmp    0x530(%r15),%rsp             ;;  779:   __ cmpptr(rsp, Address(thread, JavaThread::shadow_zone_safe_limit()));
+  0x00007fffdfb46d3b:   jbe    0x00007fffdfb46d44           ;;  780:   __ jccb(Assembler::belowEqual, L_done);
+  0x00007fffdfb46d3d:   mov    %rsp,0x538(%r15)             ;;  781:   __ movptr(Address(thread, JavaThread::shadow_zone_growth_watermark()), rsp);
+  0x00007fffdfb46d44:   movb   $0x0,0x4c9(%r15)             ;;  783:   __ bind(L_done);
+                                                            ;;  880:   __ movbool(do_not_unlock_if_synchronized, false);
+  0x00007fffdfb46d4c:   mov    0x30(%rbx),%eax              ;;  892:       __ movl(rax, access_flags);
+  0x00007fffdfb46d4f:   test   $0x20,%al                    ;;  893:       __ testl(rax, JVM_ACC_SYNCHRONIZED);
+  0x00007fffdfb46d51:   je     0x00007fffdfb46d6b           ;;  894:       __ jcc(Assembler::zero, L);
+  0x00007fffdfb46d57:   movabs $0x7ffff73316f8,%rdi         ;;  895:       __ stop("method needs synchronization");
+  0x00007fffdfb46d61:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb46d65:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb46d6a:   hlt    
+  0x00007fffdfb46d6b:   mov    -0x48(%rbp),%rax             ;;  896:       __ bind(L);
+                                                            ;;  907:     __ movptr(rax, monitor_block_top);
+  0x00007fffdfb46d6f:   lea    0x0(%rbp,%rax,8),%rax        ;;  908:     __ lea(rax, Address(rbp, rax, Address::times_ptr));
+  0x00007fffdfb46d74:   cmp    %rsp,%rax                    ;;  909:     __ cmpptr(rax, rsp);
+  0x00007fffdfb46d77:   je     0x00007fffdfb46d91           ;;  910:     __ jcc(Assembler::equal, L);
+  0x00007fffdfb46d7d:   movabs $0x7ffff7331718,%rdi         ;;  911:     __ stop("broken stack frame setup in interpreter 5");
+  0x00007fffdfb46d87:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb46d8b:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb46d90:   hlt    
+  0x00007fffdfb46d91:   cmpb   $0x0,0x180965f9(%rip)        # 0x00007ffff7bdd391
+                                                            ;;  912:     __ bind(L);
+                                                            ;;  917:   __ notify_method_entry();
+  0x00007fffdfb46d98:   je     0x00007fffdfb46de5
+  0x00007fffdfb46d9e:   mov    -0x18(%rbp),%rsi
+  0x00007fffdfb46da2:   mov    %r15,%rdi
+  0x00007fffdfb46da5:   cmpq   $0x0,-0x10(%rbp)
+  0x00007fffdfb46daa:   je     0x00007fffdfb46dc4
+  0x00007fffdfb46db0:   movabs $0x7ffff6ecd910,%rdi
+  0x00007fffdfb46dba:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb46dbe:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb46dc3:   hlt    
+  0x00007fffdfb46dc4:   test   $0xf,%spl
+  0x00007fffdfb46dc8:   je     0x00007fffdfb46de0
+  0x00007fffdfb46dce:   sub    $0x8,%rsp
+  0x00007fffdfb46dd2:   callq  0x00007ffff6607342 = SharedRuntime::dtrace_method_entry(JavaThread*, Method*)
+  0x00007fffdfb46dd7:   add    $0x8,%rsp
+  0x00007fffdfb46ddb:   jmpq   0x00007fffdfb46de5
+  0x00007fffdfb46de0:   callq  0x00007ffff6607342 = SharedRuntime::dtrace_method_entry(JavaThread*, Method*)
+  0x00007fffdfb46de5:   mov    -0x18(%rbp),%rbx             ;;  925:   __ get_method(method);
+  0x00007fffdfb46de9:   mov    0x10(%rbx),%r11              ;;  926:   __ movptr(t, Address(method, Method::const_offset()));
+  0x00007fffdfb46ded:   movzwl 0x2e(%r11),%r11d             ;;  927:   __ load_unsigned_short(t, Address(t, ConstMethod::size_of_parameters_offset()));
+  0x00007fffdfb46df2:   shl    $0x3,%r11d                   ;;  935:   __ shll(t, Interpreter::logStackElementSize);
+  0x00007fffdfb46df6:   sub    %r11,%rsp                    ;;  937:   __ subptr(rsp, t);
+  0x00007fffdfb46df9:   sub    $0x0,%rsp                    ;;  938:   __ subptr(rsp, frame::arg_reg_save_area_bytes); // windows
+  0x00007fffdfb46dfd:   and    $0xfffffffffffffff0,%rsp     ;;  939:   __ andptr(rsp, -16); // must be 16 byte boundary (see amd64 ABI)
+  0x00007fffdfb46e01:   mov    0x78(%rbx),%r11              ;;  945:     __ movptr(t, Address(method, Method::signature_handler_offset()));
+  0x00007fffdfb46e05:   test   %r11,%r11                    ;;  946:     __ testptr(t, t);
+  0x00007fffdfb46e08:   jne    0x00007fffdfb46f3b           ;;  947:     __ jcc(Assembler::notZero, L);
+  0x00007fffdfb46e0e:   callq  0x00007fffdfb46e18           ;;  948:     __ call_VM(noreg,
+  0x00007fffdfb46e13:   jmpq   0x00007fffdfb46f33
+  0x00007fffdfb46e18:   mov    %rbx,%rsi
+  0x00007fffdfb46e1b:   lea    0x8(%rsp),%rax
+  0x00007fffdfb46e20:   mov    %r13,-0x40(%rbp)
+  0x00007fffdfb46e24:   cmpq   $0x0,-0x10(%rbp)
+  0x00007fffdfb46e29:   je     0x00007fffdfb46e43
+  0x00007fffdfb46e2f:   movabs $0x7ffff6ecd950,%rdi
+  0x00007fffdfb46e39:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb46e3d:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb46e42:   hlt    
+  0x00007fffdfb46e43:   cmp    0x17fe0586(%rip),%r12        # 0x00007ffff7b273d0
+  0x00007fffdfb46e4a:   je     0x00007fffdfb46e64
+ ;; call_VM_base: heap base corrupted?
+  0x00007fffdfb46e50:   movabs $0x7ffff70a62b8,%rdi
+  0x00007fffdfb46e5a:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb46e5e:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb46e63:   hlt    
+  0x00007fffdfb46e64:   mov    %r15,%rdi
+  0x00007fffdfb46e67:   vzeroupper 
+  0x00007fffdfb46e6a:   mov    %rbp,0x3f0(%r15)
+  0x00007fffdfb46e71:   mov    %rax,0x3e0(%r15)
+  0x00007fffdfb46e78:   test   $0xf,%spl
+  0x00007fffdfb46e7c:   je     0x00007fffdfb46e94
+  0x00007fffdfb46e82:   sub    $0x8,%rsp
+  0x00007fffdfb46e86:   callq  0x00007ffff5fbe27a = InterpreterRuntime::prepare_native_call(JavaThread*, Method*)
+  0x00007fffdfb46e8b:   add    $0x8,%rsp
+  0x00007fffdfb46e8f:   jmpq   0x00007fffdfb46e99
+  0x00007fffdfb46e94:   callq  0x00007ffff5fbe27a = InterpreterRuntime::prepare_native_call(JavaThread*, Method*)
+  0x00007fffdfb46e99:   push   %rax
+  0x00007fffdfb46e9a:   push   %rdi
+  0x00007fffdfb46e9b:   push   %rsi
+  0x00007fffdfb46e9c:   push   %rdx
+  0x00007fffdfb46e9d:   push   %rcx
+  0x00007fffdfb46e9e:   push   %r8
+  0x00007fffdfb46ea0:   push   %r9
+  0x00007fffdfb46ea2:   push   %r10
+  0x00007fffdfb46ea4:   push   %r11
+  0x00007fffdfb46ea6:   test   $0xf,%spl
+  0x00007fffdfb46eaa:   je     0x00007fffdfb46ec2
+  0x00007fffdfb46eb0:   sub    $0x8,%rsp
+  0x00007fffdfb46eb4:   callq  0x00007ffff55e8d58 = Thread::current()
+  0x00007fffdfb46eb9:   add    $0x8,%rsp
+  0x00007fffdfb46ebd:   jmpq   0x00007fffdfb46ec7
+  0x00007fffdfb46ec2:   callq  0x00007ffff55e8d58 = Thread::current()
+  0x00007fffdfb46ec7:   pop    %r11
+  0x00007fffdfb46ec9:   pop    %r10
+  0x00007fffdfb46ecb:   pop    %r9
+  0x00007fffdfb46ecd:   pop    %r8
+  0x00007fffdfb46ecf:   pop    %rcx
+  0x00007fffdfb46ed0:   pop    %rdx
+  0x00007fffdfb46ed1:   pop    %rsi
+  0x00007fffdfb46ed2:   pop    %rdi
+  0x00007fffdfb46ed3:   cmp    %rax,%r15
+  0x00007fffdfb46ed6:   je     0x00007fffdfb46ef0
+ ;; MacroAssembler::call_VM_base: rdi not callee saved?
+  0x00007fffdfb46edc:   movabs $0x7ffff70a6430,%rdi
+  0x00007fffdfb46ee6:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb46eea:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb46eef:   hlt    
+  0x00007fffdfb46ef0:   pop    %rax
+  0x00007fffdfb46ef1:   movq   $0x0,0x3e0(%r15)
+  0x00007fffdfb46efc:   movq   $0x0,0x3f0(%r15)
+  0x00007fffdfb46f07:   movq   $0x0,0x3e8(%r15)
+  0x00007fffdfb46f12:   vzeroupper 
+  0x00007fffdfb46f15:   cmpq   $0x0,0x8(%r15)
+  0x00007fffdfb46f1a:   je     0x00007fffdfb46f25
+  0x00007fffdfb46f20:   jmpq   0x00007fffdfb38c00
+  0x00007fffdfb46f25:   mov    -0x40(%rbp),%r13
+  0x00007fffdfb46f29:   mov    -0x38(%rbp),%r14
+  0x00007fffdfb46f2d:   lea    0x0(%rbp,%r14,8),%r14
+  0x00007fffdfb46f32:   retq   
+  0x00007fffdfb46f33:   mov    -0x18(%rbp),%rbx             ;;  952:     __ get_method(method);
+  0x00007fffdfb46f37:   mov    0x78(%rbx),%r11              ;;  953:     __ movptr(t, Address(method, Method::signature_handler_offset()));
+  0x00007fffdfb46f3b:   callq  *%r11                        ;;  954:     __ bind(L);
+                                                            ;;  969:   __ call(t);
+  0x00007fffdfb46f3e:   mov    -0x18(%rbp),%rbx             ;;  970:   __ get_method(method);        // slow path can do a GC, reload RBX
+  0x00007fffdfb46f42:   mov    %rax,0x18(%rbp)              ;;  975:   __ movptr(Address(rbp,
+  0x00007fffdfb46f46:   mov    0x30(%rbx),%r11d             ;;  982:     __ movl(t, Address(method, Method::access_flags_offset()));
+  0x00007fffdfb46f4a:   test   $0x8,%r11b                   ;;  983:     __ testl(t, JVM_ACC_STATIC);
+  0x00007fffdfb46f4e:   je     0x00007fffdfb46f6f           ;;  984:     __ jcc(Assembler::zero, L);
+  0x00007fffdfb46f54:   mov    0x10(%rbx),%r11              ;;  986:     __ load_mirror(t, method, rax);
+  0x00007fffdfb46f58:   mov    0x8(%r11),%r11
+  0x00007fffdfb46f5c:   mov    0x20(%r11),%r11
+  0x00007fffdfb46f60:   mov    0x78(%r11),%r11
+  0x00007fffdfb46f64:   mov    (%r11),%r11
+  0x00007fffdfb46f67:   mov    %r11,0x10(%rbp)              ;;  988:     __ movptr(Address(rbp, frame::interpreter_frame_oop_temp_offset * wordSize),
+  0x00007fffdfb46f6b:   lea    0x10(%rbp),%rsi              ;;  995:     __ lea(c_rarg1,
+  0x00007fffdfb46f6f:   mov    0x70(%rbx),%rax              ;;  998:     __ bind(L);
+                                                            ;; 1004:     __ movptr(rax, Address(method, Method::native_function_offset()));
+  0x00007fffdfb46f73:   movabs $0x7ffff6606cfd,%r10         ;; 1006:     __ cmpptr(rax, unsatisfied.addr(), rscratch1);
+  0x00007fffdfb46f7d:   cmp    %r10,%rax
+  0x00007fffdfb46f80:   jne    0x00007fffdfb470b3           ;; 1007:     __ jcc(Assembler::notEqual, L);
+  0x00007fffdfb46f86:   callq  0x00007fffdfb46f90           ;; 1008:     __ call_VM(noreg,
+  0x00007fffdfb46f8b:   jmpq   0x00007fffdfb470ab
+  0x00007fffdfb46f90:   mov    %rbx,%rsi
+  0x00007fffdfb46f93:   lea    0x8(%rsp),%rax
+  0x00007fffdfb46f98:   mov    %r13,-0x40(%rbp)
+  0x00007fffdfb46f9c:   cmpq   $0x0,-0x10(%rbp)
+  0x00007fffdfb46fa1:   je     0x00007fffdfb46fbb
+  0x00007fffdfb46fa7:   movabs $0x7ffff6ecd950,%rdi
+  0x00007fffdfb46fb1:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb46fb5:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb46fba:   hlt    
+  0x00007fffdfb46fbb:   cmp    0x17fe040e(%rip),%r12        # 0x00007ffff7b273d0
+  0x00007fffdfb46fc2:   je     0x00007fffdfb46fdc
+ ;; call_VM_base: heap base corrupted?
+  0x00007fffdfb46fc8:   movabs $0x7ffff70a62b8,%rdi
+  0x00007fffdfb46fd2:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb46fd6:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb46fdb:   hlt    
+  0x00007fffdfb46fdc:   mov    %r15,%rdi
+  0x00007fffdfb46fdf:   vzeroupper 
+  0x00007fffdfb46fe2:   mov    %rbp,0x3f0(%r15)
+  0x00007fffdfb46fe9:   mov    %rax,0x3e0(%r15)
+  0x00007fffdfb46ff0:   test   $0xf,%spl
+  0x00007fffdfb46ff4:   je     0x00007fffdfb4700c
+  0x00007fffdfb46ffa:   sub    $0x8,%rsp
+  0x00007fffdfb46ffe:   callq  0x00007ffff5fbe27a = InterpreterRuntime::prepare_native_call(JavaThread*, Method*)
+  0x00007fffdfb47003:   add    $0x8,%rsp
+  0x00007fffdfb47007:   jmpq   0x00007fffdfb47011
+  0x00007fffdfb4700c:   callq  0x00007ffff5fbe27a = InterpreterRuntime::prepare_native_call(JavaThread*, Method*)
+  0x00007fffdfb47011:   push   %rax
+  0x00007fffdfb47012:   push   %rdi
+  0x00007fffdfb47013:   push   %rsi
+  0x00007fffdfb47014:   push   %rdx
+  0x00007fffdfb47015:   push   %rcx
+  0x00007fffdfb47016:   push   %r8
+  0x00007fffdfb47018:   push   %r9
+  0x00007fffdfb4701a:   push   %r10
+  0x00007fffdfb4701c:   push   %r11
+  0x00007fffdfb4701e:   test   $0xf,%spl
+  0x00007fffdfb47022:   je     0x00007fffdfb4703a
+  0x00007fffdfb47028:   sub    $0x8,%rsp
+  0x00007fffdfb4702c:   callq  0x00007ffff55e8d58 = Thread::current()
+  0x00007fffdfb47031:   add    $0x8,%rsp
+  0x00007fffdfb47035:   jmpq   0x00007fffdfb4703f
+  0x00007fffdfb4703a:   callq  0x00007ffff55e8d58 = Thread::current()
+  0x00007fffdfb4703f:   pop    %r11
+  0x00007fffdfb47041:   pop    %r10
+  0x00007fffdfb47043:   pop    %r9
+  0x00007fffdfb47045:   pop    %r8
+  0x00007fffdfb47047:   pop    %rcx
+  0x00007fffdfb47048:   pop    %rdx
+  0x00007fffdfb47049:   pop    %rsi
+  0x00007fffdfb4704a:   pop    %rdi
+  0x00007fffdfb4704b:   cmp    %rax,%r15
+  0x00007fffdfb4704e:   je     0x00007fffdfb47068
+ ;; MacroAssembler::call_VM_base: rdi not callee saved?
+  0x00007fffdfb47054:   movabs $0x7ffff70a6430,%rdi
+  0x00007fffdfb4705e:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb47062:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb47067:   hlt    
+  0x00007fffdfb47068:   pop    %rax
+  0x00007fffdfb47069:   movq   $0x0,0x3e0(%r15)
+  0x00007fffdfb47074:   movq   $0x0,0x3f0(%r15)
+  0x00007fffdfb4707f:   movq   $0x0,0x3e8(%r15)
+  0x00007fffdfb4708a:   vzeroupper 
+  0x00007fffdfb4708d:   cmpq   $0x0,0x8(%r15)
+  0x00007fffdfb47092:   je     0x00007fffdfb4709d
+  0x00007fffdfb47098:   jmpq   0x00007fffdfb38c00
+  0x00007fffdfb4709d:   mov    -0x40(%rbp),%r13
+  0x00007fffdfb470a1:   mov    -0x38(%rbp),%r14
+  0x00007fffdfb470a5:   lea    0x0(%rbp,%r14,8),%r14
+  0x00007fffdfb470aa:   retq   
+  0x00007fffdfb470ab:   mov    -0x18(%rbp),%rbx             ;; 1012:     __ get_method(method);
+  0x00007fffdfb470af:   mov    0x70(%rbx),%rax              ;; 1013:     __ movptr(rax, Address(method, Method::native_function_offset()));
+  0x00007fffdfb470b3:   lea    0x400(%r15),%rdi             ;; 1014:     __ bind(L);
+                                                            ;; 1028:    __ lea(c_rarg0, Address(r15_thread, JavaThread::jni_environment_offset()));
+  0x00007fffdfb470ba:   vzeroupper                          ;; 1032:    __ set_last_Java_frame(rsp, rbp, (address) __ pc(), rscratch1);
+  0x00007fffdfb470bd:   mov    %rbp,0x3f0(%r15)
+  0x00007fffdfb470c4:   movabs $0x7fffdfb470ba,%r10
+  0x00007fffdfb470ce:   mov    %r10,0x3e8(%r15)
+  0x00007fffdfb470d5:   mov    %rsp,0x3e0(%r15)
+  0x00007fffdfb470dc:   mov    0x48c(%r15),%r11d            ;; 1039:     __ movl(t, Address(thread, JavaThread::thread_state_offset()));
+  0x00007fffdfb470e3:   cmp    $0x8,%r11d                   ;; 1040:     __ cmpl(t, _thread_in_Java);
+  0x00007fffdfb470e7:   je     0x00007fffdfb47101           ;; 1041:     __ jcc(Assembler::equal, L);
+  0x00007fffdfb470ed:   movabs $0x7ffff7331850,%rdi         ;; 1042:     __ stop("Wrong thread state in native stub");
+  0x00007fffdfb470f7:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb470fb:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb47100:   hlt    
+  0x00007fffdfb47101:   movl   $0x4,0x48c(%r15)             ;; 1043:     __ bind(L);
+                                                            ;; 1049:   __ movl(Address(thread, JavaThread::thread_state_offset()),
+  0x00007fffdfb4710c:   callq  *%rax                        ;; 1053:   __ call(rax);
+  0x00007fffdfb4710e:   vzeroupper                          ;; 1058:   __ restore_cpu_control_state_after_jni(rscratch1);
+  0x00007fffdfb47111:   sub    $0x10,%rsp                   ;; 1091:   __ push(dtos);
+  0x00007fffdfb47115:   vmovsd %xmm0,(%rsp)
+  0x00007fffdfb4711a:   sub    $0x10,%rsp                   ;; 1094:   __ push(ltos);
+  0x00007fffdfb4711e:   mov    %rax,(%rsp)
+  0x00007fffdfb47122:   movq   $0x0,0x8(%rsp)
+  0x00007fffdfb4712b:   movl   $0x5,0x48c(%r15)             ;; 1098:   __ movl(Address(thread, JavaThread::thread_state_offset()),
+  0x00007fffdfb47136:   lock addl $0x0,-0x40(%rsp)          ;; 1103:     __ membar(Assembler::Membar_mask_bits(
+  0x00007fffdfb4713c:   cmp    0x490(%r15),%rbp             ;; 1119:     __ safepoint_poll(slow_path, thread, true /* at_return */, false /* in_nmethod */);
+  0x00007fffdfb47143:   ja     0x00007fffdfb47157
+  0x00007fffdfb47149:   cmpl   $0x0,0x488(%r15)             ;; 1121:     __ cmpl(Address(thread, JavaThread::suspend_flags_offset()), 0);
+  0x00007fffdfb47151:   je     0x00007fffdfb47170           ;; 1122:     __ jcc(Assembler::equal, Continue);
+  0x00007fffdfb47157:   mov    %r15,%rdi                    ;; 1123:     __ bind(slow_path);
+                                                            ;; 1139:     __ mov(c_rarg0, r15_thread);
+  0x00007fffdfb4715a:   mov    %rsp,%r12                    ;; 1140:     __ mov(r12, rsp); // remember sp (can only use r12 if not using call_VM)
+  0x00007fffdfb4715d:   sub    $0x0,%rsp                    ;; 1141:     __ subptr(rsp, frame::arg_reg_save_area_bytes); // windows
+  0x00007fffdfb47161:   and    $0xfffffffffffffff0,%rsp     ;; 1142:     __ andptr(rsp, -16); // align stack as required by ABI
+  0x00007fffdfb47165:   callq  0x00007ffff5fe8684 = JavaThread::check_special_condition_for_native_trans(JavaThread*)
+                                                            ;; 1143:     __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, JavaThread::check_special_condition_for_native_trans)));
+  0x00007fffdfb4716a:   mov    %r12,%rsp                    ;; 1144:     __ mov(rsp, r12); // restore sp
+  0x00007fffdfb4716d:   xor    %r12,%r12                    ;; 1145:     __ reinit_heapbase();
+  0x00007fffdfb47170:   movl   $0x8,0x48c(%r15)             ;; 1147:     __ bind(Continue);
+                                                            ;; 1151:   __ movl(Address(thread, JavaThread::thread_state_offset()), _thread_in_Java);
+  0x00007fffdfb4717b:   movq   $0x0,0x3e0(%r15)             ;; 1154:   __ reset_last_Java_frame(thread, true);
+  0x00007fffdfb47186:   movq   $0x0,0x3f0(%r15)
+  0x00007fffdfb47191:   movq   $0x0,0x3e8(%r15)
+  0x00007fffdfb4719c:   vzeroupper 
+  0x00007fffdfb4719f:   mov    0x470(%r15),%r11             ;; 1162:   __ movptr(t, Address(thread, JavaThread::active_handles_offset()));
+  0x00007fffdfb471a6:   movl   $0x0,0x100(%r11)             ;; 1163:   __ movl(Address(t, JNIHandleBlock::top_offset()), NULL_WORD);
+  0x00007fffdfb471b1:   movabs $0x7fffdfb42d7a,%r11         ;; 1170:     __ lea(t, ExternalAddress(AbstractInterpreter::result_handler(T_OBJECT)));
+  0x00007fffdfb471bb:   cmp    0x18(%rbp),%r11              ;; 1171:     __ cmpptr(t, Address(rbp, frame::interpreter_frame_result_handler_offset*wordSize));
+  0x00007fffdfb471bf:   jne    0x00007fffdfb473d3           ;; 1172:     __ jcc(Assembler::notEqual, no_oop);
+  0x00007fffdfb471c5:   mov    (%rsp),%rax                  ;; 1174:     __ pop(ltos);
+  0x00007fffdfb471c9:   add    $0x10,%rsp
+  0x00007fffdfb471cd:   test   %rax,%rax                    ;; 1176:     __ resolve_jobject(rax /* value */,
+  0x00007fffdfb471d0:   je     0x00007fffdfb473be
+  0x00007fffdfb471d6:   test   $0x3,%al
+  0x00007fffdfb471d8:   jne    0x00007fffdfb471e6
+  0x00007fffdfb471de:   mov    (%rax),%rax
+  0x00007fffdfb471e1:   jmpq   0x00007fffdfb473be
+  0x00007fffdfb471e6:   test   $0x1,%al
+  0x00007fffdfb471e8:   jne    0x00007fffdfb471f7
+  0x00007fffdfb471ee:   mov    -0x2(%rax),%rax
+  0x00007fffdfb471f2:   jmpq   0x00007fffdfb473be
+  0x00007fffdfb471f7:   mov    -0x1(%rax),%rax
+  0x00007fffdfb471fb:   cmpb   $0x0,0x38(%r15)
+  0x00007fffdfb47200:   je     0x00007fffdfb473be
+  0x00007fffdfb47206:   cmp    $0x0,%rax
+  0x00007fffdfb4720a:   je     0x00007fffdfb473be
+  0x00007fffdfb47210:   mov    0x28(%r15),%r11
+  0x00007fffdfb47214:   cmp    $0x0,%r11
+  0x00007fffdfb47218:   je     0x00007fffdfb47232
+  0x00007fffdfb4721e:   sub    $0x8,%r11
+  0x00007fffdfb47222:   mov    %r11,0x28(%r15)
+  0x00007fffdfb47226:   add    0x30(%r15),%r11
+  0x00007fffdfb4722a:   mov    %rax,(%r11)
+  0x00007fffdfb4722d:   jmpq   0x00007fffdfb473be
+ ;; push_call_clobbered_registers start
+  0x00007fffdfb47232:   sub    $0xd0,%rsp
+  0x00007fffdfb47239:   mov    %rax,(%rsp)
+  0x00007fffdfb4723d:   mov    %rcx,0x8(%rsp)
+  0x00007fffdfb47242:   mov    %rdx,0x10(%rsp)
+  0x00007fffdfb47247:   mov    %rsi,0x18(%rsp)
+  0x00007fffdfb4724c:   mov    %rdi,0x20(%rsp)
+  0x00007fffdfb47251:   mov    %r8,0x28(%rsp)
+  0x00007fffdfb47256:   mov    %r9,0x30(%rsp)
+  0x00007fffdfb4725b:   mov    %r10,0x38(%rsp)
+  0x00007fffdfb47260:   mov    %r11,0x40(%rsp)
+  0x00007fffdfb47265:   vmovsd %xmm0,0x50(%rsp)
+  0x00007fffdfb4726b:   vmovsd %xmm1,0x58(%rsp)
+  0x00007fffdfb47271:   vmovsd %xmm2,0x60(%rsp)
+  0x00007fffdfb47277:   vmovsd %xmm3,0x68(%rsp)
+  0x00007fffdfb4727d:   vmovsd %xmm4,0x70(%rsp)
+  0x00007fffdfb47283:   vmovsd %xmm5,0x78(%rsp)
+  0x00007fffdfb47289:   vmovsd %xmm6,0x80(%rsp)
+  0x00007fffdfb47292:   vmovsd %xmm7,0x88(%rsp)
+  0x00007fffdfb4729b:   vmovsd %xmm8,0x90(%rsp)
+  0x00007fffdfb472a4:   vmovsd %xmm9,0x98(%rsp)
+  0x00007fffdfb472ad:   vmovsd %xmm10,0xa0(%rsp)
+  0x00007fffdfb472b6:   vmovsd %xmm11,0xa8(%rsp)
+  0x00007fffdfb472bf:   vmovsd %xmm12,0xb0(%rsp)
+  0x00007fffdfb472c8:   vmovsd %xmm13,0xb8(%rsp)
+  0x00007fffdfb472d1:   vmovsd %xmm14,0xc0(%rsp)
+  0x00007fffdfb472da:   vmovsd %xmm15,0xc8(%rsp)
+ ;; push_call_clobbered_registers end
+  0x00007fffdfb472e3:   mov    %r15,%rsi
+  0x00007fffdfb472e6:   mov    %rax,%rdi
+  0x00007fffdfb472e9:   test   $0xf,%spl
+  0x00007fffdfb472ed:   je     0x00007fffdfb47305
+  0x00007fffdfb472f3:   sub    $0x8,%rsp
+  0x00007fffdfb472f7:   callq  0x00007ffff5dfe18e = G1BarrierSetRuntime::write_ref_field_pre_entry(oopDesc*, JavaThread*)
+  0x00007fffdfb472fc:   add    $0x8,%rsp
+  0x00007fffdfb47300:   jmpq   0x00007fffdfb4730a
+  0x00007fffdfb47305:   callq  0x00007ffff5dfe18e = G1BarrierSetRuntime::write_ref_field_pre_entry(oopDesc*, JavaThread*)
+ ;; pop_call_clobbered_registers start
+  0x00007fffdfb4730a:   vmovsd 0xc8(%rsp),%xmm15
+  0x00007fffdfb47313:   vmovsd 0xc0(%rsp),%xmm14
+  0x00007fffdfb4731c:   vmovsd 0xb8(%rsp),%xmm13
+  0x00007fffdfb47325:   vmovsd 0xb0(%rsp),%xmm12
+  0x00007fffdfb4732e:   vmovsd 0xa8(%rsp),%xmm11
+  0x00007fffdfb47337:   vmovsd 0xa0(%rsp),%xmm10
+  0x00007fffdfb47340:   vmovsd 0x98(%rsp),%xmm9
+  0x00007fffdfb47349:   vmovsd 0x90(%rsp),%xmm8
+  0x00007fffdfb47352:   vmovsd 0x88(%rsp),%xmm7
+  0x00007fffdfb4735b:   vmovsd 0x80(%rsp),%xmm6
+  0x00007fffdfb47364:   vmovsd 0x78(%rsp),%xmm5
+  0x00007fffdfb4736a:   vmovsd 0x70(%rsp),%xmm4
+  0x00007fffdfb47370:   vmovsd 0x68(%rsp),%xmm3
+  0x00007fffdfb47376:   vmovsd 0x60(%rsp),%xmm2
+  0x00007fffdfb4737c:   vmovsd 0x58(%rsp),%xmm1
+  0x00007fffdfb47382:   vmovsd 0x50(%rsp),%xmm0
+  0x00007fffdfb47388:   mov    0x40(%rsp),%r11
+  0x00007fffdfb4738d:   mov    0x38(%rsp),%r10
+  0x00007fffdfb47392:   mov    0x30(%rsp),%r9
+  0x00007fffdfb47397:   mov    0x28(%rsp),%r8
+  0x00007fffdfb4739c:   mov    0x20(%rsp),%rdi
+  0x00007fffdfb473a1:   mov    0x18(%rsp),%rsi
+  0x00007fffdfb473a6:   mov    0x10(%rsp),%rdx
+  0x00007fffdfb473ab:   mov    0x8(%rsp),%rcx
+  0x00007fffdfb473b0:   mov    (%rsp),%rax
+  0x00007fffdfb473b4:   add    $0xd0,%rsp
+  0x00007fffdfb473bb:   vzeroupper 
+ ;; pop_call_clobbered_registers end
+  0x00007fffdfb473be:   mov    %rax,0x10(%rbp)              ;; 1179:     __ movptr(Address(rbp, frame::interpreter_frame_oop_temp_offset*wordSize), rax);
+  0x00007fffdfb473c2:   sub    $0x10,%rsp                   ;; 1181:     __ push(ltos);
+  0x00007fffdfb473c6:   mov    %rax,(%rsp)
+  0x00007fffdfb473ca:   movq   $0x0,0x8(%rsp)
+  0x00007fffdfb473d3:   cmpl   $0x2,0x518(%r15)             ;; 1182:     __ bind(no_oop);
+                                                            ;; 1188:     __ cmpl(Address(thread, JavaThread::stack_guard_state_offset()),
+  0x00007fffdfb473db:   jne    0x00007fffdfb47499           ;; 1190:     __ jcc(Assembler::notEqual, no_reguard);
+  0x00007fffdfb473e1:   sub    $0x80,%rsp                   ;; 1192:     __ pusha(); // XXX only save smashed registers
+  0x00007fffdfb473e8:   mov    %rax,0x78(%rsp)
+  0x00007fffdfb473ed:   mov    %rcx,0x70(%rsp)
+  0x00007fffdfb473f2:   mov    %rdx,0x68(%rsp)
+  0x00007fffdfb473f7:   mov    %rbx,0x60(%rsp)
+  0x00007fffdfb473fc:   mov    %rbp,0x50(%rsp)
+  0x00007fffdfb47401:   mov    %rsi,0x48(%rsp)
+  0x00007fffdfb47406:   mov    %rdi,0x40(%rsp)
+  0x00007fffdfb4740b:   mov    %r8,0x38(%rsp)
+  0x00007fffdfb47410:   mov    %r9,0x30(%rsp)
+  0x00007fffdfb47415:   mov    %r10,0x28(%rsp)
+  0x00007fffdfb4741a:   mov    %r11,0x20(%rsp)
+  0x00007fffdfb4741f:   mov    %r12,0x18(%rsp)
+  0x00007fffdfb47424:   mov    %r13,0x10(%rsp)
+  0x00007fffdfb47429:   mov    %r14,0x8(%rsp)
+  0x00007fffdfb4742e:   mov    %r15,(%rsp)
+  0x00007fffdfb47432:   mov    %rsp,%r12                    ;; 1197:     __ mov(r12, rsp); // remember sp (can only use r12 if not using call_VM)
+  0x00007fffdfb47435:   sub    $0x0,%rsp                    ;; 1198:     __ subptr(rsp, frame::arg_reg_save_area_bytes); // windows
+  0x00007fffdfb47439:   and    $0xfffffffffffffff0,%rsp     ;; 1199:     __ andptr(rsp, -16); // align stack as required by ABI
+  0x00007fffdfb4743d:   callq  0x00007ffff660b910 = SharedRuntime::reguard_yellow_pages()
+                                                            ;; 1200:     __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, SharedRuntime::reguard_yellow_pages)));
+  0x00007fffdfb47442:   mov    %r12,%rsp                    ;; 1201:     __ mov(rsp, r12); // restore sp
+  0x00007fffdfb47445:   mov    (%rsp),%r15                  ;; 1202:     __ popa(); // XXX only restore smashed registers
+  0x00007fffdfb47449:   mov    0x8(%rsp),%r14
+  0x00007fffdfb4744e:   mov    0x10(%rsp),%r13
+  0x00007fffdfb47453:   mov    0x18(%rsp),%r12
+  0x00007fffdfb47458:   mov    0x20(%rsp),%r11
+  0x00007fffdfb4745d:   mov    0x28(%rsp),%r10
+  0x00007fffdfb47462:   mov    0x30(%rsp),%r9
+  0x00007fffdfb47467:   mov    0x38(%rsp),%r8
+  0x00007fffdfb4746c:   mov    0x40(%rsp),%rdi
+  0x00007fffdfb47471:   mov    0x48(%rsp),%rsi
+  0x00007fffdfb47476:   mov    0x50(%rsp),%rbp
+  0x00007fffdfb4747b:   mov    0x60(%rsp),%rbx
+  0x00007fffdfb47480:   mov    0x68(%rsp),%rdx
+  0x00007fffdfb47485:   mov    0x70(%rsp),%rcx
+  0x00007fffdfb4748a:   mov    0x78(%rsp),%rax
+  0x00007fffdfb4748f:   add    $0x80,%rsp
+  0x00007fffdfb47496:   xor    %r12,%r12                    ;; 1203:     __ reinit_heapbase();
+  0x00007fffdfb47499:   mov    -0x18(%rbp),%rbx             ;; 1206:     __ bind(no_reguard);
+                                                            ;; 1213:   __ get_method(method);
+  0x00007fffdfb4749d:   mov    0x10(%rbx),%r13              ;; 1216:   __ movptr(rbcp, Address(method, Method::const_offset()));   // get ConstMethod*
+  0x00007fffdfb474a1:   lea    0x38(%r13),%r13              ;; 1217:   __ lea(rbcp, Address(rbcp, ConstMethod::codes_offset()));    // get codebase
+  0x00007fffdfb474a5:   cmpq   $0x0,0x8(%r15)               ;; 1222:     __ cmpptr(Address(thread, Thread::pending_exception_offset()), NULL_WORD);
+  0x00007fffdfb474aa:   je     0x00007fffdfb475e6           ;; 1223:     __ jcc(Assembler::zero, L);
+  0x00007fffdfb474b0:   callq  0x00007fffdfb474ba           ;; 1228:     __ MacroAssembler::call_VM(noreg,
+  0x00007fffdfb474b5:   jmpq   0x00007fffdfb475d2
+  0x00007fffdfb474ba:   lea    0x8(%rsp),%rax
+  0x00007fffdfb474bf:   mov    %r13,-0x40(%rbp)
+  0x00007fffdfb474c3:   cmpq   $0x0,-0x10(%rbp)
+  0x00007fffdfb474c8:   je     0x00007fffdfb474e2
+  0x00007fffdfb474ce:   movabs $0x7ffff6ecd950,%rdi
+  0x00007fffdfb474d8:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb474dc:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb474e1:   hlt    
+  0x00007fffdfb474e2:   cmp    0x17fdfee7(%rip),%r12        # 0x00007ffff7b273d0
+  0x00007fffdfb474e9:   je     0x00007fffdfb47503
+ ;; call_VM_base: heap base corrupted?
+  0x00007fffdfb474ef:   movabs $0x7ffff70a62b8,%rdi
+  0x00007fffdfb474f9:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb474fd:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb47502:   hlt    
+  0x00007fffdfb47503:   mov    %r15,%rdi
+  0x00007fffdfb47506:   vzeroupper 
+  0x00007fffdfb47509:   mov    %rbp,0x3f0(%r15)
+  0x00007fffdfb47510:   mov    %rax,0x3e0(%r15)
+  0x00007fffdfb47517:   test   $0xf,%spl
+  0x00007fffdfb4751b:   je     0x00007fffdfb47533
+  0x00007fffdfb47521:   sub    $0x8,%rsp
+  0x00007fffdfb47525:   callq  0x00007ffff5fb9540 = InterpreterRuntime::throw_pending_exception(JavaThread*)
+  0x00007fffdfb4752a:   add    $0x8,%rsp
+  0x00007fffdfb4752e:   jmpq   0x00007fffdfb47538
+  0x00007fffdfb47533:   callq  0x00007ffff5fb9540 = InterpreterRuntime::throw_pending_exception(JavaThread*)
+  0x00007fffdfb47538:   push   %rax
+  0x00007fffdfb47539:   push   %rdi
+  0x00007fffdfb4753a:   push   %rsi
+  0x00007fffdfb4753b:   push   %rdx
+  0x00007fffdfb4753c:   push   %rcx
+  0x00007fffdfb4753d:   push   %r8
+  0x00007fffdfb4753f:   push   %r9
+  0x00007fffdfb47541:   push   %r10
+  0x00007fffdfb47543:   push   %r11
+  0x00007fffdfb47545:   test   $0xf,%spl
+  0x00007fffdfb47549:   je     0x00007fffdfb47561
+  0x00007fffdfb4754f:   sub    $0x8,%rsp
+  0x00007fffdfb47553:   callq  0x00007ffff55e8d58 = Thread::current()
+  0x00007fffdfb47558:   add    $0x8,%rsp
+  0x00007fffdfb4755c:   jmpq   0x00007fffdfb47566
+  0x00007fffdfb47561:   callq  0x00007ffff55e8d58 = Thread::current()
+  0x00007fffdfb47566:   pop    %r11
+  0x00007fffdfb47568:   pop    %r10
+  0x00007fffdfb4756a:   pop    %r9
+  0x00007fffdfb4756c:   pop    %r8
+  0x00007fffdfb4756e:   pop    %rcx
+  0x00007fffdfb4756f:   pop    %rdx
+  0x00007fffdfb47570:   pop    %rsi
+  0x00007fffdfb47571:   pop    %rdi
+  0x00007fffdfb47572:   cmp    %rax,%r15
+  0x00007fffdfb47575:   je     0x00007fffdfb4758f
+ ;; MacroAssembler::call_VM_base: rdi not callee saved?
+  0x00007fffdfb4757b:   movabs $0x7ffff70a6430,%rdi
+  0x00007fffdfb47585:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb47589:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb4758e:   hlt    
+  0x00007fffdfb4758f:   pop    %rax
+  0x00007fffdfb47590:   movq   $0x0,0x3e0(%r15)
+  0x00007fffdfb4759b:   movq   $0x0,0x3f0(%r15)
+  0x00007fffdfb475a6:   movq   $0x0,0x3e8(%r15)
+  0x00007fffdfb475b1:   vzeroupper 
+  0x00007fffdfb475b4:   cmpq   $0x0,0x8(%r15)
+  0x00007fffdfb475b9:   je     0x00007fffdfb475c4
+  0x00007fffdfb475bf:   jmpq   0x00007fffdfb38c00
+  0x00007fffdfb475c4:   mov    -0x40(%rbp),%r13
+  0x00007fffdfb475c8:   mov    -0x38(%rbp),%r14
+  0x00007fffdfb475cc:   lea    0x0(%rbp,%r14,8),%r14
+  0x00007fffdfb475d1:   retq   
+  0x00007fffdfb475d2:   movabs $0x7ffff6b1cb99,%rdi         ;; 1231:     __ should_not_reach_here();
+  0x00007fffdfb475dc:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb475e0:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb475e5:   hlt    
+  0x00007fffdfb475e6:   mov    0x30(%rbx),%r11d             ;; 1232:     __ bind(L);
+                                                            ;; 1238:     __ movl(t, Address(method, Method::access_flags_offset()));
+  0x00007fffdfb475ea:   test   $0x20,%r11b                  ;; 1239:     __ testl(t, JVM_ACC_SYNCHRONIZED);
+  0x00007fffdfb475ee:   je     0x00007fffdfb47821           ;; 1240:     __ jcc(Assembler::zero, L);
+  0x00007fffdfb475f4:   lea    -0x58(%rbp),%rsi             ;; 1255:       __ lea(regmon, monitor); // address of first monitor
+  0x00007fffdfb475f8:   mov    0x8(%rsi),%r11               ;; 1257:       __ movptr(t, Address(regmon, BasicObjectLock::obj_offset()));
+  0x00007fffdfb475fc:   test   %r11,%r11                    ;; 1258:       __ testptr(t, t);
+  0x00007fffdfb475ff:   jne    0x00007fffdfb4773b           ;; 1259:       __ jcc(Assembler::notZero, unlock);
+  0x00007fffdfb47605:   callq  0x00007fffdfb4760f           ;; 1262:       __ MacroAssembler::call_VM(noreg,
+  0x00007fffdfb4760a:   jmpq   0x00007fffdfb47727
+  0x00007fffdfb4760f:   lea    0x8(%rsp),%rax
+  0x00007fffdfb47614:   mov    %r13,-0x40(%rbp)
+  0x00007fffdfb47618:   cmpq   $0x0,-0x10(%rbp)
+  0x00007fffdfb4761d:   je     0x00007fffdfb47637
+  0x00007fffdfb47623:   movabs $0x7ffff6ecd950,%rdi
+  0x00007fffdfb4762d:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb47631:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb47636:   hlt    
+  0x00007fffdfb47637:   cmp    0x17fdfd92(%rip),%r12        # 0x00007ffff7b273d0
+  0x00007fffdfb4763e:   je     0x00007fffdfb47658
+ ;; call_VM_base: heap base corrupted?
+  0x00007fffdfb47644:   movabs $0x7ffff70a62b8,%rdi
+  0x00007fffdfb4764e:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb47652:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb47657:   hlt    
+  0x00007fffdfb47658:   mov    %r15,%rdi
+  0x00007fffdfb4765b:   vzeroupper 
+  0x00007fffdfb4765e:   mov    %rbp,0x3f0(%r15)
+  0x00007fffdfb47665:   mov    %rax,0x3e0(%r15)
+  0x00007fffdfb4766c:   test   $0xf,%spl
+  0x00007fffdfb47670:   je     0x00007fffdfb47688
+  0x00007fffdfb47676:   sub    $0x8,%rsp
+  0x00007fffdfb4767a:   callq  0x00007ffff5fba9e8 = InterpreterRuntime::throw_illegal_monitor_state_exception(JavaThread*)
+  0x00007fffdfb4767f:   add    $0x8,%rsp
+  0x00007fffdfb47683:   jmpq   0x00007fffdfb4768d
+  0x00007fffdfb47688:   callq  0x00007ffff5fba9e8 = InterpreterRuntime::throw_illegal_monitor_state_exception(JavaThread*)
+  0x00007fffdfb4768d:   push   %rax
+  0x00007fffdfb4768e:   push   %rdi
+  0x00007fffdfb4768f:   push   %rsi
+  0x00007fffdfb47690:   push   %rdx
+  0x00007fffdfb47691:   push   %rcx
+  0x00007fffdfb47692:   push   %r8
+  0x00007fffdfb47694:   push   %r9
+  0x00007fffdfb47696:   push   %r10
+  0x00007fffdfb47698:   push   %r11
+  0x00007fffdfb4769a:   test   $0xf,%spl
+  0x00007fffdfb4769e:   je     0x00007fffdfb476b6
+  0x00007fffdfb476a4:   sub    $0x8,%rsp
+  0x00007fffdfb476a8:   callq  0x00007ffff55e8d58 = Thread::current()
+  0x00007fffdfb476ad:   add    $0x8,%rsp
+  0x00007fffdfb476b1:   jmpq   0x00007fffdfb476bb
+  0x00007fffdfb476b6:   callq  0x00007ffff55e8d58 = Thread::current()
+  0x00007fffdfb476bb:   pop    %r11
+  0x00007fffdfb476bd:   pop    %r10
+  0x00007fffdfb476bf:   pop    %r9
+  0x00007fffdfb476c1:   pop    %r8
+  0x00007fffdfb476c3:   pop    %rcx
+  0x00007fffdfb476c4:   pop    %rdx
+  0x00007fffdfb476c5:   pop    %rsi
+  0x00007fffdfb476c6:   pop    %rdi
+  0x00007fffdfb476c7:   cmp    %rax,%r15
+  0x00007fffdfb476ca:   je     0x00007fffdfb476e4
+ ;; MacroAssembler::call_VM_base: rdi not callee saved?
+  0x00007fffdfb476d0:   movabs $0x7ffff70a6430,%rdi
+  0x00007fffdfb476da:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb476de:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb476e3:   hlt    
+  0x00007fffdfb476e4:   pop    %rax
+  0x00007fffdfb476e5:   movq   $0x0,0x3e0(%r15)
+  0x00007fffdfb476f0:   movq   $0x0,0x3f0(%r15)
+  0x00007fffdfb476fb:   movq   $0x0,0x3e8(%r15)
+  0x00007fffdfb47706:   vzeroupper 
+  0x00007fffdfb47709:   cmpq   $0x0,0x8(%r15)
+  0x00007fffdfb4770e:   je     0x00007fffdfb47719
+  0x00007fffdfb47714:   jmpq   0x00007fffdfb38c00
+  0x00007fffdfb47719:   mov    -0x40(%rbp),%r13
+  0x00007fffdfb4771d:   mov    -0x38(%rbp),%r14
+  0x00007fffdfb47721:   lea    0x0(%rbp,%r14,8),%r14
+  0x00007fffdfb47726:   retq   
+  0x00007fffdfb47727:   movabs $0x7ffff6b1cb99,%rdi         ;; 1265:       __ should_not_reach_here();
+  0x00007fffdfb47731:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb47735:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb4773a:   hlt    
+  0x00007fffdfb4773b:   mov    %r13,-0x40(%rbp)             ;; 1267:       __ bind(unlock);
+                                                            ;; 1268:       __ unlock_object(regmon);
+  0x00007fffdfb4773f:   mov    0x8(%rsi),%rcx
+  0x00007fffdfb47743:   movq   $0x0,0x8(%rsi)
+  0x00007fffdfb4774b:   mov    0x728(%r15),%edx
+  0x00007fffdfb47752:   cmp    -0x8(%r15,%rdx,1),%rcx
+  0x00007fffdfb47757:   jne    0x00007fffdfb477d6
+  0x00007fffdfb4775d:   movq   $0x0,-0x8(%r15,%rdx,1)
+  0x00007fffdfb47766:   subl   $0x8,0x728(%r15)
+  0x00007fffdfb4776e:   cmp    -0x10(%r15,%rdx,1),%rcx
+  0x00007fffdfb47773:   je     0x00007fffdfb477ca
+  0x00007fffdfb47779:   mov    (%rcx),%rax
+  0x00007fffdfb4777c:   test   $0x2,%al
+  0x00007fffdfb4777e:   jne    0x00007fffdfb477b2
+  0x00007fffdfb47784:   test   $0x1,%al
+  0x00007fffdfb47786:   je     0x00007fffdfb477a0
+  0x00007fffdfb4778c:   movabs $0x7ffff70a81c8,%rdi
+  0x00007fffdfb47796:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb4779a:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb4779f:   hlt    
+  0x00007fffdfb477a0:   mov    %rax,%rdx
+  0x00007fffdfb477a3:   or     $0x1,%rdx
+  0x00007fffdfb477a7:   lock cmpxchg %rdx,(%rcx)
+  0x00007fffdfb477ac:   je     0x00007fffdfb477ca
+  0x00007fffdfb477b2:   mov    0x728(%r15),%edx
+  0x00007fffdfb477b9:   mov    %rcx,(%r15,%rdx,1)
+  0x00007fffdfb477bd:   addl   $0x8,0x728(%r15)
+  0x00007fffdfb477c5:   jmpq   0x00007fffdfb477d6
+  0x00007fffdfb477ca:   decq   0x5a0(%r15)
+  0x00007fffdfb477d1:   jmpq   0x00007fffdfb4781d
+  0x00007fffdfb477d6:   mov    %rcx,0x8(%rsi)
+  0x00007fffdfb477da:   mov    %rsi,%rdi
+  0x00007fffdfb477dd:   cmpq   $0x0,-0x10(%rbp)
+  0x00007fffdfb477e2:   je     0x00007fffdfb477fc
+  0x00007fffdfb477e8:   movabs $0x7ffff6ecd910,%rdi
+  0x00007fffdfb477f2:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb477f6:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb477fb:   hlt    
+  0x00007fffdfb477fc:   test   $0xf,%spl
+  0x00007fffdfb47800:   je     0x00007fffdfb47818
+  0x00007fffdfb47806:   sub    $0x8,%rsp
+  0x00007fffdfb4780a:   callq  0x00007ffff5fba874 = InterpreterRuntime::monitorexit(BasicObjectLock*)
+  0x00007fffdfb4780f:   add    $0x8,%rsp
+  0x00007fffdfb47813:   jmpq   0x00007fffdfb4781d
+  0x00007fffdfb47818:   callq  0x00007ffff5fba874 = InterpreterRuntime::monitorexit(BasicObjectLock*)
+  0x00007fffdfb4781d:   mov    -0x40(%rbp),%r13
+  0x00007fffdfb47821:   cmpb   $0x0,0x18095b69(%rip)        # 0x00007ffff7bdd391
+                                                            ;; 1270:     __ bind(L);
+                                                            ;; 1278:   __ notify_method_exit(vtos, InterpreterMacroAssembler::NotifyJVMTI);
+  0x00007fffdfb47828:   je     0x00007fffdfb47875
+  0x00007fffdfb4782e:   mov    -0x18(%rbp),%rsi
+  0x00007fffdfb47832:   mov    %r15,%rdi
+  0x00007fffdfb47835:   cmpq   $0x0,-0x10(%rbp)
+  0x00007fffdfb4783a:   je     0x00007fffdfb47854
+  0x00007fffdfb47840:   movabs $0x7ffff6ecd910,%rdi
+  0x00007fffdfb4784a:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb4784e:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb47853:   hlt    
+  0x00007fffdfb47854:   test   $0xf,%spl
+  0x00007fffdfb47858:   je     0x00007fffdfb47870
+  0x00007fffdfb4785e:   sub    $0x8,%rsp
+  0x00007fffdfb47862:   callq  0x00007ffff66074f8 = SharedRuntime::dtrace_method_exit(JavaThread*, Method*)
+  0x00007fffdfb47867:   add    $0x8,%rsp
+  0x00007fffdfb4786b:   jmpq   0x00007fffdfb47875
+  0x00007fffdfb47870:   callq  0x00007ffff66074f8 = SharedRuntime::dtrace_method_exit(JavaThread*, Method*)
+  0x00007fffdfb47875:   mov    (%rsp),%rax                  ;; 1283:   __ pop(ltos);
+  0x00007fffdfb47879:   add    $0x10,%rsp
+  0x00007fffdfb4787d:   vmovsd (%rsp),%xmm0                 ;; 1284:   LP64_ONLY( __ pop(dtos));
+  0x00007fffdfb47882:   add    $0x10,%rsp
+  0x00007fffdfb47886:   mov    0x18(%rbp),%r11              ;; 1286:   __ movptr(t, Address(rbp,
+  0x00007fffdfb4788a:   callq  *%r11                        ;; 1288:   __ call(t);
+  0x00007fffdfb4788d:   mov    -0x8(%rbp),%r11              ;; 1291:   __ movptr(t, Address(rbp,
+  0x00007fffdfb47891:   leaveq                              ;; 1294:   __ leave();                                // remove frame anchor
+  0x00007fffdfb47892:   pop    %rdi                         ;; 1295:   __ pop(rdi);                               // get return address
+  0x00007fffdfb47893:   mov    %r11,%rsp                    ;; 1296:   __ mov(rsp, t);                            // set sp to sender sp
+  0x00007fffdfb47896:   jmpq   *%rdi                        ;; 1297:   __ jmp(rdi);
+  0x00007fffdfb47898:   mov    $0x0,%esi                    ;; 1301:     __ bind(invocation_counter_overflow);
+                                                            ;;  452:   __ movl(rarg, 0);
+  0x00007fffdfb4789d:   callq  0x00007fffdfb478a7           ;;  453:   __ call_VM(noreg,
+  0x00007fffdfb478a2:   jmpq   0x00007fffdfb479bf
+  0x00007fffdfb478a7:   lea    0x8(%rsp),%rax
+  0x00007fffdfb478ac:   mov    %r13,-0x40(%rbp)
+  0x00007fffdfb478b0:   cmpq   $0x0,-0x10(%rbp)
+  0x00007fffdfb478b5:   je     0x00007fffdfb478cf
+  0x00007fffdfb478bb:   movabs $0x7ffff6ecd950,%rdi
+  0x00007fffdfb478c5:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb478c9:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb478ce:   hlt    
+  0x00007fffdfb478cf:   cmp    0x17fdfafa(%rip),%r12        # 0x00007ffff7b273d0
+  0x00007fffdfb478d6:   je     0x00007fffdfb478f0
+ ;; call_VM_base: heap base corrupted?
+  0x00007fffdfb478dc:   movabs $0x7ffff70a62b8,%rdi
+  0x00007fffdfb478e6:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb478ea:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb478ef:   hlt    
+  0x00007fffdfb478f0:   mov    %r15,%rdi
+  0x00007fffdfb478f3:   vzeroupper 
+  0x00007fffdfb478f6:   mov    %rbp,0x3f0(%r15)
+  0x00007fffdfb478fd:   mov    %rax,0x3e0(%r15)
+  0x00007fffdfb47904:   test   $0xf,%spl
+  0x00007fffdfb47908:   je     0x00007fffdfb47920
+  0x00007fffdfb4790e:   sub    $0x8,%rsp
+  0x00007fffdfb47912:   callq  0x00007ffff5fbbf5e = InterpreterRuntime::frequency_counter_overflow(JavaThread*, unsigned char*)
+  0x00007fffdfb47917:   add    $0x8,%rsp
+  0x00007fffdfb4791b:   jmpq   0x00007fffdfb47925
+  0x00007fffdfb47920:   callq  0x00007ffff5fbbf5e = InterpreterRuntime::frequency_counter_overflow(JavaThread*, unsigned char*)
+  0x00007fffdfb47925:   push   %rax
+  0x00007fffdfb47926:   push   %rdi
+  0x00007fffdfb47927:   push   %rsi
+  0x00007fffdfb47928:   push   %rdx
+  0x00007fffdfb47929:   push   %rcx
+  0x00007fffdfb4792a:   push   %r8
+  0x00007fffdfb4792c:   push   %r9
+  0x00007fffdfb4792e:   push   %r10
+  0x00007fffdfb47930:   push   %r11
+  0x00007fffdfb47932:   test   $0xf,%spl
+  0x00007fffdfb47936:   je     0x00007fffdfb4794e
+  0x00007fffdfb4793c:   sub    $0x8,%rsp
+  0x00007fffdfb47940:   callq  0x00007ffff55e8d58 = Thread::current()
+  0x00007fffdfb47945:   add    $0x8,%rsp
+  0x00007fffdfb47949:   jmpq   0x00007fffdfb47953
+  0x00007fffdfb4794e:   callq  0x00007ffff55e8d58 = Thread::current()
+  0x00007fffdfb47953:   pop    %r11
+  0x00007fffdfb47955:   pop    %r10
+  0x00007fffdfb47957:   pop    %r9
+  0x00007fffdfb47959:   pop    %r8
+  0x00007fffdfb4795b:   pop    %rcx
+  0x00007fffdfb4795c:   pop    %rdx
+  0x00007fffdfb4795d:   pop    %rsi
+  0x00007fffdfb4795e:   pop    %rdi
+  0x00007fffdfb4795f:   cmp    %rax,%r15
+  0x00007fffdfb47962:   je     0x00007fffdfb4797c
+ ;; MacroAssembler::call_VM_base: rdi not callee saved?
+  0x00007fffdfb47968:   movabs $0x7ffff70a6430,%rdi
+  0x00007fffdfb47972:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffdfb47976:   callq  0x00007ffff638f360 = MacroAssembler::debug64(char*, long, long*)
+  0x00007fffdfb4797b:   hlt    
+  0x00007fffdfb4797c:   pop    %rax
+  0x00007fffdfb4797d:   movq   $0x0,0x3e0(%r15)
+  0x00007fffdfb47988:   movq   $0x0,0x3f0(%r15)
+  0x00007fffdfb47993:   movq   $0x0,0x3e8(%r15)
+  0x00007fffdfb4799e:   vzeroupper 
+  0x00007fffdfb479a1:   cmpq   $0x0,0x8(%r15)
+  0x00007fffdfb479a6:   je     0x00007fffdfb479b1
+  0x00007fffdfb479ac:   jmpq   0x00007fffdfb38c00
+  0x00007fffdfb479b1:   mov    -0x40(%rbp),%r13
+  0x00007fffdfb479b5:   mov    -0x38(%rbp),%r14
+  0x00007fffdfb479b9:   lea    0x0(%rbp,%r14,8),%r14
+  0x00007fffdfb479be:   retq   
+  0x00007fffdfb479bf:   mov    -0x18(%rbp),%rbx             ;;  458:   __ movptr(rbx, Address(rbp, method_offset));   // restore Method*
+  0x00007fffdfb479c3:   jmpq   0x00007fffdfb46c3b           ;;  461:   __ jmp(do_continue, relocInfo::none);
+--------------------------------------------------------------------------------
+...
+
+sayHello() address = 0x7ffff50971b9
+Hello JavaLand
+
+Compiled method (n/a) 17101    8     n 0       io.simonis.NativeCallDemo::sayHello (native)
+ total in heap  [0x00007fffe00c7d90,0x00007fffe00c8128] = 920
+ relocation     [0x00007fffe00c7f00,0x00007fffe00c7f40] = 64
+ main code      [0x00007fffe00c7f40,0x00007fffe00c811f] = 479
+ stub code      [0x00007fffe00c811f,0x00007fffe00c8120] = 1
+ oops           [0x00007fffe00c8120,0x00007fffe00c8128] = 8
+
+[Disassembly]
+--------------------------------------------------------------------------------
+[Constant Pool (empty)]
+
+--------------------------------------------------------------------------------
+
+[Entry Point]
+  # {method} {0x00007fff6c4002b8} 'sayHello' '(Ljava/lang/String;)V' in 'io/simonis/NativeCallDemo'
+  # parm0:    rsi:rsi   = 'java/lang/String'
+  #           [sp+0x50]  (sp of caller)
+  0x00007fffe00c7f40:   nop
+  0x00007fffe00c7f41:   nop
+  0x00007fffe00c7f42:   mov    0x8(%rsi),%r10d
+  0x00007fffe00c7f46:   cmp    0x8(%rax),%r10d
+  0x00007fffe00c7f4a:   jne    0x00007fffdfc4f0a0           ;   {runtime_call ic_miss_stub}
+[Verified Entry Point]
+  0x00007fffe00c7f50:   mov    %eax,-0x18000(%rsp)
+  0x00007fffe00c7f57:   push   %rbp
+  0x00007fffe00c7f58:   mov    %rsp,%rbp
+  0x00007fffe00c7f5b:   sub    $0x40,%rsp
+  0x00007fffe00c7f5f:   nop
+  0x00007fffe00c7f60:   cmpl   $0x0,0x20(%r15)
+  0x00007fffe00c7f68:   je     0x00007fffe00c7f6f
+  0x00007fffe00c7f6a:   callq  Stub::nmethod_entry_barrier  ;   {runtime_call StubRoutines (final stubs)}
+  0x00007fffe00c7f6f:   test   $0xf,%spl
+  0x00007fffe00c7f73:   je     0x00007fffe00c7f8d
+ ;; improperly aligned stack
+  0x00007fffe00c7f79:   movabs $0x7ffff723b41a,%rdi         ;   {external_word}
+  0x00007fffe00c7f83:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffe00c7f87:   callq  0x00007ffff638f360           ;   {runtime_call MacroAssembler::debug64(char*, long, long*)}
+  0x00007fffe00c7f8c:   hlt    
+ ;; move 0 -&gt; 2
+  0x00007fffe00c7f8d:   mov    %rsi,(%rsp)
+  0x00007fffe00c7f91:   cmp    $0x0,%rsi
+  0x00007fffe00c7f95:   lea    (%rsp),%rdx
+  0x00007fffe00c7f99:   cmove  (%rsp),%rdx
+  0x00007fffe00c7f9e:   movabs $0x62c011810,%r14            ;   {oop(a 'java/lang/Class'{0x000000062c011810} = 'io/simonis/NativeCallDemo')}
+  0x00007fffe00c7fa8:   mov    %r14,0x30(%rsp)
+  0x00007fffe00c7fad:   lea    0x30(%rsp),%r14
+  0x00007fffe00c7fb2:   mov    %r14,%rsi
+  0x00007fffe00c7fb5:   vzeroupper 
+  0x00007fffe00c7fb8:   movabs $0x7fffe00c7fb5,%r10         ;   {internal_word}
+  0x00007fffe00c7fc2:   mov    %r10,0x3e8(%r15)
+  0x00007fffe00c7fc9:   mov    %rsp,0x3e0(%r15)
+  0x00007fffe00c7fd0:   cmpb   $0x0,0x17b153ba(%rip)        # 0x00007ffff7bdd391
+                                                            ;   {external_word}
+  0x00007fffe00c7fd7:   je     0x00007fffe00c800f
+  0x00007fffe00c7fdd:   push   %rsi
+  0x00007fffe00c7fde:   push   %rdx
+  0x00007fffe00c7fdf:   movabs $0x7fff6c4002b8,%rsi         ;   {metadata({method} {0x00007fff6c4002b8} 'sayHello' '(Ljava/lang/String;)V' in 'io/simonis/NativeCallDemo')}
+  0x00007fffe00c7fe9:   mov    %r15,%rdi
+  0x00007fffe00c7fec:   test   $0xf,%spl
+  0x00007fffe00c7ff0:   je     0x00007fffe00c8008
+  0x00007fffe00c7ff6:   sub    $0x8,%rsp
+  0x00007fffe00c7ffa:   callq  0x00007ffff6607342           ;   {runtime_call SharedRuntime::dtrace_method_entry(JavaThread*, Method*)}
+  0x00007fffe00c7fff:   add    $0x8,%rsp
+  0x00007fffe00c8003:   jmpq   0x00007fffe00c800d
+  0x00007fffe00c8008:   callq  0x00007ffff6607342           ;   {runtime_call SharedRuntime::dtrace_method_entry(JavaThread*, Method*)}
+  0x00007fffe00c800d:   pop    %rdx
+  0x00007fffe00c800e:   pop    %rsi
+  0x00007fffe00c800f:   lea    0x400(%r15),%rdi
+  0x00007fffe00c8016:   movl   $0x4,0x48c(%r15)
+  0x00007fffe00c8021:   callq  0x00007ffff50971b9           ;   {runtime_call sayHello(JNIEnv_*, _jclass*, _jstring*)}
+  0x00007fffe00c8026:   vzeroupper 
+  0x00007fffe00c8029:   movl   $0x5,0x48c(%r15)
+  0x00007fffe00c8034:   lock addl $0x0,-0x40(%rsp)
+  0x00007fffe00c803a:   cmp    0x490(%r15),%rbp
+  0x00007fffe00c8041:   ja     0x00007fffe00c8055
+  0x00007fffe00c8047:   cmpl   $0x0,0x488(%r15)
+  0x00007fffe00c804f:   je     0x00007fffe00c8071
+  0x00007fffe00c8055:   vzeroupper 
+  0x00007fffe00c8058:   mov    %r15,%rdi
+  0x00007fffe00c805b:   mov    %rsp,%r12
+  0x00007fffe00c805e:   sub    $0x0,%rsp
+  0x00007fffe00c8062:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffe00c8066:   callq  0x00007ffff5fe8684           ;   {runtime_call JavaThread::check_special_condition_for_native_trans(JavaThread*)}
+  0x00007fffe00c806b:   mov    %r12,%rsp
+  0x00007fffe00c806e:   xor    %r12,%r12
+  0x00007fffe00c8071:   movl   $0x8,0x48c(%r15)
+  0x00007fffe00c807c:   cmpl   $0x2,0x518(%r15)
+  0x00007fffe00c8084:   je     0x00007fffe00c8101
+  0x00007fffe00c808a:   cmpb   $0x0,0x17b15300(%rip)        # 0x00007ffff7bdd391
+                                                            ;   {external_word}
+  0x00007fffe00c8091:   je     0x00007fffe00c80c5
+  0x00007fffe00c8097:   movabs $0x7fff6c4002b8,%rsi         ;   {metadata({method} {0x00007fff6c4002b8} 'sayHello' '(Ljava/lang/String;)V' in 'io/simonis/NativeCallDemo')}
+  0x00007fffe00c80a1:   mov    %r15,%rdi
+  0x00007fffe00c80a4:   test   $0xf,%spl
+  0x00007fffe00c80a8:   je     0x00007fffe00c80c0
+  0x00007fffe00c80ae:   sub    $0x8,%rsp
+  0x00007fffe00c80b2:   callq  0x00007ffff66074f8           ;   {runtime_call SharedRuntime::dtrace_method_exit(JavaThread*, Method*)}
+  0x00007fffe00c80b7:   add    $0x8,%rsp
+  0x00007fffe00c80bb:   jmpq   0x00007fffe00c80c5
+  0x00007fffe00c80c0:   callq  0x00007ffff66074f8           ;   {runtime_call SharedRuntime::dtrace_method_exit(JavaThread*, Method*)}
+  0x00007fffe00c80c5:   movq   $0x0,0x3e0(%r15)
+  0x00007fffe00c80d0:   movq   $0x0,0x3e8(%r15)
+  0x00007fffe00c80db:   vzeroupper 
+  0x00007fffe00c80de:   mov    0x470(%r15),%rcx
+  0x00007fffe00c80e5:   movl   $0x0,0x100(%rcx)
+  0x00007fffe00c80ef:   leaveq 
+  0x00007fffe00c80f0:   cmpq   $0x0,0x8(%r15)
+  0x00007fffe00c80f5:   jne    0x00007fffe00c80fc
+  0x00007fffe00c80fb:   retq   
+  0x00007fffe00c80fc:   jmpq   Stub::forward exception      ;   {runtime_call StubRoutines (initial stubs)}
+  0x00007fffe00c8101:   vzeroupper 
+  0x00007fffe00c8104:   mov    %rsp,%r12
+  0x00007fffe00c8107:   sub    $0x0,%rsp
+  0x00007fffe00c810b:   and    $0xfffffffffffffff0,%rsp
+  0x00007fffe00c810f:   callq  0x00007ffff660b910           ;   {runtime_call SharedRuntime::reguard_yellow_pages()}
+  0x00007fffe00c8114:   mov    %r12,%rsp
+  0x00007fffe00c8117:   xor    %r12,%r12
+  0x00007fffe00c811a:   jmpq   0x00007fffe00c808a
+[Stub Code]
+  0x00007fffe00c811f:   hlt    
+--------------------------------------------------------------------------------
+[/Disassembly]
+...
+
+17187    8     n 0       io.simonis.NativeCallDemo::sayHello (native)   (static)
+
+Hello JavaLand
+              </code>
+            </pre>
+
+          </section>
         </section>
 
 
@@ -1189,16 +2355,16 @@ void <span class="fragment highlight-current-border" data-fragment-index="7">ele
 
             <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
               <code class="cpp" data-trim="true" data-noescape="true" style="height:100%">
-jint JNI_OnLoad(<span class="fragment highlight-current-border" data-fragment-index="1">JavaVM *vm</span>, void *reserved) {
+jint JNI_OnLoad(JavaVM *vm, void *reserved) {
   JNIEnv* env;
-  <span class="fragment highlight-current-border" data-fragment-index="3">vm-&gt;GetEnv((void**)&amp;env, JNI_VERSION_1_8)</span>;
-  jclass cls = <span class="fragment highlight-current-border" data-fragment-index="5">env-&gt;FindClass("io/simonis/NativeCallGC")</span>;
+  vm-&gt;GetEnv((void**)&amp;env, JNI_VERSION_1_8);
+  jclass cls = env-&gt;FindClass("io/simonis/NativeCallGC");
   <span class="fragment highlight-current-border border-no-bottom" data-fragment-index="7">static JNINativeMethod methods[] = {                       </span>
   <span class="fragment highlight-current-border border-no-bottom-top" data-fragment-index="7">  {"block", "(I)V", (void*)&amp;block},                        </span>
   <span class="fragment highlight-current-border border-no-bottom-top" data-fragment-index="7">  {"elements", "([BI)V", (void*)&amp;elements},                </span>
   <span class="fragment highlight-current-border border-no-top" data-fragment-index="7">  {"elementsCritical", "([BI)V", (void*)&amp;elementsCritical},</span>
   };
-  <span class="fragment highlight-current-border" data-fragment-index="6">env-&gt;RegisterNatives(cls, methods, 3)</span>;
+  env-&gt;RegisterNatives(cls, methods, 3);
   return JNI_VERSION_1_8;
 }
               </code>
@@ -1240,33 +2406,6 @@ openjdk version "21" 2023-09-19 LTS
             </pre>
 
           </section>
-        </section>
-
-
-        <section data-background="images/background_default.jpg" class="demo">
-          <h1>Calling Conventions</h1>
-
-          <ul>
-            <li>The Interpreter <a href="https://github.com/openjdk/jdk/blob/21867c929a2f2c961148f2cd1e79d672ac278d27/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L67">passes all arguments on the stack</a>
-            </li>
-            <li><a href="https://github.com/openjdk/jdk/blob/21867c929a2f2c961148f2cd1e79d672ac278d27/src/hotspot/cpu/x86/assembler_x86.hpp#L97">Comiled Calling Conventions</a> are a shifted version of the Native CC</li>
-          </ul>
-          <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
-            <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
-------|---------------------------------------------------
-  C   | <span class="fragment highlight-current-border" data-fragment-index="1">c_rarg0</span>   <span class="fragment highlight-current-border" data-fragment-index="2">c_rarg1</span>  c_rarg2 c_rarg3 c_rarg4 c_rarg5
-------|---------------------------------------------------
-Win32 | rcx       rdx      r8      r9      rdi*    rsi*
-Sys V | rdi       rsi      rdx     rcx     r8      r9
-------|---------------------------------------------------
-Java  | j_rarg5   <span class="fragment highlight-current-border" data-fragment-index="1">j_rarg0</span>  <span class="fragment highlight-current-border" data-fragment-index="2">j_rarg1</span> j_rarg2 j_rarg3 j_rarg4
-------|---------------------------------------------------
-            </code>
-          </pre>
-          <ul>
-            <li class="fragment">Allows calling native methods without argument shuffling (<code>JNIEnv*</code>)</li>
-            <li class="fragment">Static native methods requier an extra slot for the <code>jclass</code> argument</li>
-          </ul>
         </section>
 
 
@@ -1444,7 +2583,7 @@ NativeCall.callingStaticEmpty              1  avgt    5  21.145 ± 0.002  ns/op
               <li class="fragment"><em class="bold">Safepointing and Thread State have to be synchronized!</em>
                 <ol class="fragment">
                   <li>Full Memory Barrier (<a href="https://bugs.openjdk.org/browse/JDK-8187809"><code>-XX:+/-UseMembar</code></a>)</li>
-                  <li><code>mprotect(2)</code> trick / <code>membarrier(2)</code></li>
+                  <li><a href="https://man7.org/linux/man-pages/man2/mprotect.2.html"><code>mprotect(2)</code></a> trick / <a href="https://man7.org/linux/man-pages/man2/membarrier.2.html"><code>membarrier(2)</code></a></li>
                 </ol>
               </li>
             </ul>
