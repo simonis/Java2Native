@@ -34,6 +34,10 @@
     overflow-x: hidden !important;
 }
 
+.reveal {
+    color: #c1d2d2;
+}
+
 .reveal .slides > section.demo,
 .reveal .slides > section > section.demo {
     padding: 0;
@@ -557,18 +561,18 @@ table tbody tr td em {
 
               <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
                 <code class="java" data-trim="true" data-noescape="true" style="height:100%">
-  native void emptyNativeMethod();
-
   @CompilerControl(DONT_INLINE)
-  public void emptyMethod() {}
+  public void empty() {}
+
+  native void emptyNative();
 
   @Benchmark
-  public void methodCalling() {
-    emptyMethod();
+  public void callingEmpty() {
+    empty();
   }
   @Benchmark
-  public void methodCallingNative() {
-    emptyNativeMethod();
+  public void callingEmptyNative() {
+    emptyNative();
   }
                 </code>
               </pre>
@@ -581,24 +585,54 @@ table tbody tr td em {
                 <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
 <span class="fragment" data-fragment-index="1">$ java -jar benchmarks.jar
 Benchmark              Score  Units
-methodCalling          8.493  ns/op
-methodCallingNative   <span class="fragment highlight-current-border" data-fragment-index="5">23.425</span>  ns/op
+callingEmpty           3.705  ns/op
+callingEmptyNative    <span class="fragment highlight-current-border" data-fragment-index="5">20.129</span>  ns/op
 
 <span class="fragment" data-fragment-index="3">$ java <span class="fragment highlight-current-border" data-fragment-index="3">-XX:-TieredCompilation</span> -jar ...
 Benchmark              Score  Units
-methodCalling          8.559  ns/op
-methodCallingNative  <span class="fragment highlight-current-border" data-fragment-index="5">123.906</span>  ns/op
+callingEmpty           3.707  ns/op
+callingEmptyNative    <span class="fragment highlight-current-border" data-fragment-index="5">39.736</span>  ns/op
 </span></span>
                 </code>
               </pre>
 <!--
-Benchmark                       Mode  Cnt   Score   Error  Units
-NativeCall.methodCalling        avgt    5   8.493 ± 0.062  ns/op
-NativeCall.methodCallingNative  avgt    5  23.425 ± 0.151  ns/op
+Laptop (benchmark_start.sh / cset)
 
-Benchmark                       Mode  Cnt    Score   Error  Units
-NativeCall.methodCalling        avgt    5    8.559 ± 0.255  ns/op
-NativeCall.methodCallingNative  avgt    5  123.906 ± 0.418  ns/op
+Corretto 17
+===========
+Benchmark                      (length)  Mode  Cnt   Score   Error  Units
+NativeCall.callingEmpty               1  avgt    5   3.273 ± 0.005  ns/op
+NativeCall.callingEmptyNative         1  avgt    5  19.667 ± 0.381  ns/op
+
+Corretto 17 -XX:-TieredCompilation
+===========
+Benchmark                      (length)  Mode  Cnt   Score   Error  Units
+NativeCall.callingEmpty               1  avgt    5   3.273 ± 0.005  ns/op
+NativeCall.callingEmptyNative         1  avgt    5  38.572 ± 0.867  ns/op
+
+Corretto 21
+===========
+Benchmark                      (length)  Mode  Cnt   Score   Error  Units
+NativeCall.callingEmpty               1  avgt    5   3.705 ± 0.004  ns/op
+NativeCall.callingEmptyNative         1  avgt    5  20.129 ± 0.126  ns/op
+
+Corretto 21 -XX:-TieredCompilation
+===========
+Benchmark                      (length)  Mode  Cnt   Score   Error  Units
+NativeCall.callingEmpty               1  avgt    5   3.707 ± 0.009  ns/op
+NativeCall.callingEmptyNative         1  avgt    5  39.736 ± 0.217  ns/op
+
+Corretto 21 -XX:+UseSystemMemoryBarrier
+===========
+Benchmark                      (length)  Mode  Cnt   Score   Error  Units
+NativeCall.callingEmpty               1  avgt    5   3.708 ± 0.016  ns/op
+NativeCall.callingEmptyNative         1  avgt    5  10.204 ± 0.075  ns/op
+
+Corretto 21 -XX:-TieredCompilation -XX:+UseSystemMemoryBarrier
+===========
+Benchmark                      (length)  Mode  Cnt   Score   Error  Units
+NativeCall.callingEmpty               1  avgt    5   3.703 ± 0.003  ns/op
+NativeCall.callingEmptyNative         1  avgt    5  36.319 ± 0.167  ns/op
 -->
             </div>
           </div>
@@ -1067,32 +1101,10 @@ Picked up JAVA_TOOL_OPTIONS: -Xlog:gc*
             </ul>
           </section>
 
+        </section>
 
-          <section data-background="images/background_default.jpg" class="demo">
-            <h1>Calling Conventions</h1>
 
-            <ul>
-              <li>The Interpreter <a href="https://github.com/openjdk/jdk/blob/21867c929a2f2c961148f2cd1e79d672ac278d27/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L67">passes all arguments on the stack</a>
-              </li>
-              <li><a href="https://github.com/openjdk/jdk/blob/21867c929a2f2c961148f2cd1e79d672ac278d27/src/hotspot/cpu/x86/assembler_x86.hpp#L97">Comiled Calling Conventions</a> are a shifted version of the Native CC</li>
-            </ul>
-            <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
-              <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
-------|---------------------------------------------------
-  C   | <span class="fragment highlight-current-border" data-fragment-index="1">c_rarg0</span>   <span class="fragment highlight-current-border" data-fragment-index="2">c_rarg1</span>  c_rarg2 c_rarg3 c_rarg4 c_rarg5
-------|---------------------------------------------------
-Win32 | rcx       rdx      r8      r9      rdi*    rsi*
-Sys V | rdi       rsi      rdx     rcx     r8      r9
-------|---------------------------------------------------
-Java  | j_rarg5   <span class="fragment highlight-current-border" data-fragment-index="1">j_rarg0</span>  <span class="fragment highlight-current-border" data-fragment-index="2">j_rarg1</span> j_rarg2 j_rarg3 j_rarg4
-------|---------------------------------------------------
-              </code>
-            </pre>
-            <ul>
-              <li class="fragment">Allows calling native methods without argument shuffling (<code>JNIEnv*</code>)</li>
-              <li class="fragment">Static native methods requier an extra slot for the <code>jclass</code> argument</li>
-            </ul>
-          </section>
+        <section data-background="images/background_default.jpg" class="demo" style="height: 100%;">
 
           <section data-background="images/background_default.jpg" class="demo">
             <h1>Accessing the Java heap from Native</h1>
@@ -1231,6 +1243,187 @@ openjdk version "21" 2023-09-19 LTS
         </section>
 
 
+        <section data-background="images/background_default.jpg" class="demo">
+          <h1>Calling Conventions</h1>
+
+          <ul>
+            <li>The Interpreter <a href="https://github.com/openjdk/jdk/blob/21867c929a2f2c961148f2cd1e79d672ac278d27/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L67">passes all arguments on the stack</a>
+            </li>
+            <li><a href="https://github.com/openjdk/jdk/blob/21867c929a2f2c961148f2cd1e79d672ac278d27/src/hotspot/cpu/x86/assembler_x86.hpp#L97">Comiled Calling Conventions</a> are a shifted version of the Native CC</li>
+          </ul>
+          <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+            <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
+------|---------------------------------------------------
+  C   | <span class="fragment highlight-current-border" data-fragment-index="1">c_rarg0</span>   <span class="fragment highlight-current-border" data-fragment-index="2">c_rarg1</span>  c_rarg2 c_rarg3 c_rarg4 c_rarg5
+------|---------------------------------------------------
+Win32 | rcx       rdx      r8      r9      rdi*    rsi*
+Sys V | rdi       rsi      rdx     rcx     r8      r9
+------|---------------------------------------------------
+Java  | j_rarg5   <span class="fragment highlight-current-border" data-fragment-index="1">j_rarg0</span>  <span class="fragment highlight-current-border" data-fragment-index="2">j_rarg1</span> j_rarg2 j_rarg3 j_rarg4
+------|---------------------------------------------------
+            </code>
+          </pre>
+          <ul>
+            <li class="fragment">Allows calling native methods without argument shuffling (<code>JNIEnv*</code>)</li>
+            <li class="fragment">Static native methods requier an extra slot for the <code>jclass</code> argument</li>
+          </ul>
+        </section>
+
+
+        <section data-background="images/background_default.jpg" class="demo" style="height: 100%;">
+
+          <section data-background="images/background_default.jpg" class="demo">
+
+            <h1>Critical Native Functions</h1>
+
+            <ul>
+              <li>Controlled by <a href="https://bugs.openjdk.org/browse/JDK-7013347"><code>-XX:+CriticalJNINatives</code></a></li>
+              <li>JDK-internal optimization introduced in JDK 7</li>
+              <li>Only for JNI calls with primitive/array arguments
+                <ul>
+                  <li>Only static "<em>leave-calls</em>" (i.e. no <code>JNIEnv*</code>/<code>jobject</code>)</li>
+                </ul>
+              </li>
+              <li>Primitive arrays are converted to a length and raw data pointer
+                <ul>
+                  <li>Implicit <code>Get/RelasePrimitiveArrayCritical </code>(still block GC)</li>
+                </ul>
+              </li>
+              <li>Only for compiled methods (i.e. native wrapper)
+                <ul>
+                  <li>Need both, JNI and Critcal JNI method<br/><br/></li>
+                </ul>
+              </li>
+              <li>Deprecated in JDK 16 (<a href="https://bugs.openjdk.org/browse/JDK-8233343">JDK-8233343</a>)</li>
+              <li>Removed in JDK 18 (<a href="https://bugs.openjdk.org/browse/JDK-8258192">JDK-8258192</a>)</li>
+            </ul>
+          </section>
+
+          <section data-background="images/background_default.jpg" class="demo">
+
+            <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+              <code class="java" data-trim="true" data-noescape="true" style="height:100%">
+  public static native void staticEmpty();
+  public static native void jniCriticalEmpty();
+  public static native long staticArray(byte[] b);
+  public static native long jniCriticalArray(byte[] b);
+
+  @Benchmark
+  public void callingStaticEmpty() {
+    staticEmpty();
+  }
+  @Benchmark
+  public void callingJniCriticalEmpty() {
+    jniCriticalEmpty();
+  }
+  @Benchmark
+  public void callingStaticArray() {
+    staticArray(array);
+  }
+  @Benchmark
+  public void callingJniCriticalArray() {
+    jniCriticalArray(array);
+  }
+              </code>
+            </pre>
+          </section>
+
+          <section data-background="images/background_default.jpg" class="demo">
+
+            <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+              <code class="cpp" data-trim="true" data-noescape="true" style="height:100%">
+void         Java_io_simonis_NativeCall_staticEmpty(JNIEnv*, jclass) {}
+
+void         Java_io_simonis_NativeCall_jniCriticalEmpty(JNIEnv*, jclass) {}
+void JavaCritical_io_simonis_NativeCall_jniCriticalEmpty() {}
+
+long Java_io_simonis_NativeCall_staticArray(JNIEnv* env, jclass cls, jbyteArray b) {
+  jbyte* jb = (jbyte*)env->GetPrimitiveArrayCritical(b, 0);
+  jbyte ret = *jb;
+  env->ReleasePrimitiveArrayCritical(b, jb, JNI_ABORT);
+  return ret;
+}
+
+long Java_io_simonis_NativeCall_jniCriticalArray(JNIEnv* env, jclass cls, jbyteArray b) {
+  jbyte* jb = (jbyte*)env->GetPrimitiveArrayCritical(b, 0);
+  jbyte ret = *jb;
+  env->ReleasePrimitiveArrayCritical(b, jb, JNI_ABORT);
+  return ret;
+}
+
+long JavaCritical_io_simonis_NativeCall_jniCriticalArray(jint length, jbyte* b) {
+  return *b;
+}
+              </code>
+            </pre>
+          </section>
+
+
+          <section data-background="images/background_default.jpg" class="demo">
+
+            <h1>Benchmark: JNI vs. Critical JNI Call</h1>
+            <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+              <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
+$ java -jar benchmarks.jar
+# JMH version: 1.37
+# VM version: JDK 1.8.0_372, OpenJDK 64-Bit Server VM, 25.372-b07
+...
+Benchmark                           Mode  Cnt   Score   Error  Units
+
+NativeCall.callingStaticEmpty       avgt    5  <span class="fragment highlight-current-border border-no-bottom" data-fragment-index="1">12.892</span> ± 0.026  ns/op
+NativeCall.callingJniCriticalEmpty  avgt    5  <span class="fragment highlight-current-border border-no-top" data-fragment-index="1">10.592</span> ± 0.022  ns/op
+
+NativeCall.callingStaticArray       avgt    5  <span class="fragment highlight-current-border border-no-bottom" data-fragment-index="3">65.753</span> ± 0.248  ns/op
+NativeCall.callingJniCriticalArray  avgt    5  <span class="fragment highlight-current-border border-no-top" data-fragment-index="3">10.790</span> ± 0.401  ns/op
+              </code>
+            </pre>
+<!--
+Laptop (benchmark_start.sh / cset)
+
+Corretto 8
+==========
+Benchmark                           (length)  Mode  Cnt   Score   Error  Units
+NativeCall.callingJniCriticalArray         1  avgt    5  10.790 ± 0.401  ns/op
+NativeCall.callingJniCriticalEmpty         1  avgt    5  10.592 ± 0.022  ns/op
+NativeCall.callingStaticArray              1  avgt    5  65.753 ± 0.248  ns/op
+NativeCall.callingStaticEmpty              1  avgt    5  12.892 ± 0.026  ns/op
+
+Corretto 8 -XX:+UseMembar
+==========
+Benchmark                           (length)  Mode  Cnt   Score   Error  Units
+NativeCall.callingJniCriticalArray         1  avgt    5  19.576 ± 0.053  ns/op
+NativeCall.callingJniCriticalEmpty         1  avgt    5  17.449 ± 0.016  ns/op
+NativeCall.callingStaticArray              1  avgt    5  98.952 ± 0.203  ns/op
+NativeCall.callingStaticEmpty              1  avgt    5  19.560 ± 0.013  ns/op
+
+
+Corretto 11 -XX:-UseMembar
+===========
+Benchmark                           (length)  Mode  Cnt   Score   Error  Units
+NativeCall.callingJniCriticalArray         1  avgt    5  12.173 ± 0.025  ns/op
+NativeCall.callingJniCriticalEmpty         1  avgt    5  10.267 ± 0.052  ns/op
+NativeCall.callingStaticArray              1  avgt    5  78.219 ± 0.397  ns/op
+NativeCall.callingStaticEmpty              1  avgt    5  11.636 ± 0.029  ns/op
+
+Corretto 11
+===========
+Benchmark                           (length)  Mode  Cnt    Score   Error  Units
+NativeCall.callingJniCriticalArray         1  avgt    5   20.625 ± 0.018  ns/op
+NativeCall.callingJniCriticalEmpty         1  avgt    5   18.525 ± 0.054  ns/op
+NativeCall.callingStaticArray              1  avgt    5  114.923 ± 0.170  ns/op
+NativeCall.callingStaticEmpty              1  avgt    5   20.106 ± 0.061  ns/op
+
+Corretto 17 -XX:+CriticalJNINatives
+===========
+Benchmark                           (length)  Mode  Cnt   Score   Error  Units
+NativeCall.callingJniCriticalArray         1  avgt    5   9.520 ± 0.013  ns/op
+NativeCall.callingJniCriticalEmpty         1  avgt    5   9.073 ± 0.042  ns/op
+NativeCall.callingStaticArray              1  avgt    5  84.776 ± 0.107  ns/op
+NativeCall.callingStaticEmpty              1  avgt    5  21.145 ± 0.002  ns/op
+-->
+          </section>
+        </section>
+
         <section data-background="images/background_default.jpg" class="demo" style="height: 100%;">
 
           <section data-background="images/background_default.jpg" class="demo">
@@ -1317,72 +1510,8 @@ openjdk version "21" 2023-09-19 LTS
             </table>
 
           </section>
-<!--
-          <section data-background="images/background_default.jpg" class="demo">
-
-            <h2>Calling empty native method (ns/op)</h2>
-
-            <table style="border: 1px solid; border-collapse: separate;">
-              <thead>
-                <tr>
-                  <th style="border-right: 6px double;"></th>
-                  <th>JDK 8</th>
-                  <th>JDK 8<br/>+UseMembar</th>
-                  <th>JDK 11</th>
-                  <th>JDK 11<br/>+UseMembar</th>
-                  <th>JDK 17</th>
-                  <th>JDK 21</th>
-                  <th>JDK 11<br/>+UseSystemMB</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style="border-right: 6px double;">m5.metal</td>
-                  <td style="text-align: right; border-right: 1px solid;"><em class="bold" style="color: #eee8d5;">5.7</em></td>
-                  <td style="text-align: right; ">10.7</td>
-                  <td style="text-align: right; ">5.7</td>
-                  <td style="text-align: right; "><em class="bold" style="color: #eee8d5;">10.9</em></td>
-                  <td style="text-align: right; "><em class="bold" style="color: #eee8d5;">10.6</em></td>
-                  <td style="text-align: right; "><em class="bold" style="color: #eee8d5;">11.0</em></td>
-                  <td style="text-align: right; ">5.5</td>
-                </tr>
-                <tr>
-                  <td style="border-right: 6px double;">my laptop</td>
-                  <td style="text-align: right; "><em class="bold" style="color: #eee8d5;">5.7</em></td>
-                  <td style="text-align: right; ">10.7</td>
-                  <td style="text-align: right; ">5.7</td>
-                  <td style="text-align: right; "><em class="bold" style="color: #eee8d5;">10.9</em></td>
-                  <td style="text-align: right; "><em class="bold" style="color: #eee8d5;">10.6</em></td>
-                  <td style="text-align: right; "><em class="bold" style="color: #eee8d5;">11.0</em></td>
-                  <td style="text-align: right; ">5.5</td>
-                </tr>
-                <tr>
-                  <td style="border-right: 6px double;">m6g.metal</td>
-                  <td style="text-align: right; ">27.8</td>
-                  <td style="text-align: right; "><em class="bold" style="color: #eee8d5;">26.7</em></td>
-                  <td style="text-align: right; ">27.6</td>
-                  <td style="text-align: right; "><em class="bold" style="color: #eee8d5;">27.6</em></td>
-                  <td style="text-align: right; "><em class="bold" style="color: #eee8d5;">17.6</em></td>
-                  <td style="text-align: right; "><em class="bold" style="color: #eee8d5;">17.6</em></td>
-                  <td style="text-align: right; ">17.6</td>
-                </tr>
-              </tbody>
-            </table>
-
-          </section>
--->
         </section>
 
-
-        <section data-background="images/background_default.jpg" class="demo" style="height: 100%;">
-
-          <section data-background="images/background_default.jpg" class="demo">
-
-            <h1>Critical Native Functions</h1>
-
-            
-          </section>
-        </section>
 
         <section data-background="images/background_default.jpg" class="demo" style="height: 100%;">
 
@@ -1441,6 +1570,8 @@ openjdk version "21" 2023-09-19 LTS
                     JDK-8258192: Obsolete the CriticalJNINatives flag</a></li>
                 <li><a href="https://github.com/apangin/nalim">
                     https://github.com/apangin/nalim</a></li>
+                <li><a href="https://github.com/bytedeco/javacpp/issues/16">
+                    JavaCPP: GetPrimitiveArrayCritical option for byte array push</a></li>
               </ul>
             </div>
           </section>

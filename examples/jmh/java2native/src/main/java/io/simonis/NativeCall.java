@@ -58,7 +58,7 @@ public class NativeCall {
     return 42;
   }
   @CompilerControl(CompilerControl.Mode.DONT_INLINE)
-  public void emptyMethod() {
+  public void empty() {
   }
   @CompilerControl(CompilerControl.Mode.DONT_INLINE)
   public long method(long l, double d) {
@@ -73,16 +73,18 @@ public class NativeCall {
     return 42;
   }
 
-  public static native void emptyStaticNativeMethod();
-  public static native void emptyStaticNativeCriticalMethod();
-  public static native long staticNativeMethod(byte[] b);
-  public static native long staticNativeCriticalMethod(byte[] b);
+  public static native void staticEmpty();
+  public static native void jniCriticalEmpty();
+
+  public static native long staticArray(byte[] b);
+  public static native long jniCriticalArray(byte[] b);
+
   @CompilerControl(CompilerControl.Mode.DONT_INLINE)
   public static long staticNativeMethodWithManyArgsHelper(long l1, long l2, long l3, long l4, long l5, double d) {
     return staticNativeMethodWithManyArgs(l1, l2, l3, l4, l5, d);
   }
   public static native long staticNativeMethodWithManyArgs(long l1, long l2, long l3, long l4, long l5, double d);
-  public native void emptyNativeMethod();
+  public native void emptyNative();
   public native long nativeMethod(long l, double d);
   @CompilerControl(CompilerControl.Mode.DONT_INLINE)
   public long nativeMethodWithManyArgsHelper(long l1, long l2, long l3, long l4, long l5, double d) {
@@ -110,23 +112,23 @@ public class NativeCall {
   }
 
   @Benchmark
-  public static void staticMethodCallingStaticNative() {
-    emptyStaticNativeMethod();
+  public void callingStaticEmpty() {
+    staticEmpty();
   }
 
   @Benchmark
-  public static void staticMethodCallingStaticNativeCritical() {
-    emptyStaticNativeCriticalMethod();
+  public void callingJniCriticalEmpty() {
+    jniCriticalEmpty();
   }
 
   @Benchmark
-  public void methodCallingStaticNative() {
-    staticNativeMethod(array);
+  public void callingStaticArray() {
+    staticArray(array);
   }
 
   @Benchmark
-  public void methodCallingStaticNativeCritical() {
-    staticNativeCriticalMethod(array);
+  public void callingJniCriticalArray() {
+    jniCriticalArray(array);
   }
 
   @Benchmark
@@ -135,8 +137,8 @@ public class NativeCall {
   }
 
   @Benchmark
-  public void methodCalling() {
-    emptyMethod();
+  public void callingEmpty() {
+    empty();
   }
 
   @Benchmark
@@ -150,8 +152,8 @@ public class NativeCall {
   }
 
   @Benchmark
-  public void methodCallingNative() {
-    emptyNativeMethod();
+  public void callingEmptyNative() {
+    emptyNative();
   }
 
   @Benchmark
@@ -167,18 +169,19 @@ public class NativeCall {
   @Benchmark
   @Fork(jvmArgsAppend = "-XX:-TieredCompilation")
   public static void staticMethodCallingStaticNativeNoTiered() {
-    emptyStaticNativeMethod();
+    staticEmpty();
   }
 
   @Benchmark
   @Fork(jvmArgsAppend = "-XX:+PreferInterpreterNativeStubs")
   public static void staticMethodCallingStaticNativeIntStub() {
-    emptyStaticNativeMethod();
+    staticEmpty();
   }
 
   public static void main(String[] args) {
+    NativeCall nc = new NativeCall();
     for (int i = 0; i < 100_000; i++) {
-      staticMethodCallingStaticNative();
+      nc.callingStaticEmpty();
     }
   }
 }

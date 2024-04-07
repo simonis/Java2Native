@@ -5,6 +5,7 @@ public class NativeCallGC {
   public static native void block(int sec);
   public static native void elements(byte[] b, int sec);
   public static native void elementsCritical(byte[] b, int sec);
+  public static native void elementsCriticalJNI(byte[] b, int sec);
 
   static {
     // Load libNativeCall.so from LD_LIBRARY_PATH / -Djava.library.path
@@ -26,6 +27,14 @@ public class NativeCallGC {
       case "block" : block(sec); break;
       case "elements" : elements(b, sec); break;
       case "elementsCritical" : elementsCritical(b, sec); break;
+      case "elementsCriticalJNI" : {
+        for (int i = 0; i < 10_000; i++) {
+          // Compile elementsCriticalJNI
+          elementsCriticalJNI(b, 0);
+        }
+        elementsCriticalJNI(b, sec);
+        break;
+      }
     }
     System.exit(0);
   }

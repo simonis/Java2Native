@@ -21,6 +21,24 @@ void elementsCritical(JNIEnv* env, jclass cls, jbyteArray b, jint s) {
   env->ReleasePrimitiveArrayCritical(b, jb, copy ? JNI_ABORT : 0);
 }
 
+void elementsCriticalJNI(JNIEnv* env, jclass cls, jbyteArray b, jint s) {
+  static jboolean print = true;
+  if (print) {
+    print = false;
+    printf("Executing elementsCriticalJNI()\n");
+  }
+}
+
+extern "C" JNIEXPORT
+void JavaCritical_io_simonis_NativeCallGC_elementsCriticalJNI(jint length, jbyte* b, jint s) {
+  static jboolean print = true;
+  if (print) {
+    print = false;
+    printf("Executing JavaCritical_elementsCriticalJNI()\n");
+  }
+  sleep(s);
+}
+
 jint JNI_OnLoad(JavaVM *vm, void *reserved) {
   JNIEnv* env;
   vm->GetEnv((void**)&env, JNI_VERSION_1_8);
@@ -29,8 +47,8 @@ jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     {"block", "(I)V", (void*)&block},
     {"elements", "([BI)V", (void*)&elements},
     {"elementsCritical", "([BI)V", (void*)&elementsCritical},
+    {"elementsCriticalJNI", "([BI)V", (void*)&elementsCriticalJNI},
   };
-  env->RegisterNatives(cls, methods, 3);
+  env->RegisterNatives(cls, methods, 4);
   return JNI_VERSION_1_8;
 }
-
