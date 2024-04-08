@@ -1213,7 +1213,7 @@ jint <span class="fragment highlight-current-border" data-fragment-index="5">JNI
           <section data-background="images/background_default.jpg" class="demo" style="height: 100%;">
 
             <pre class="big noshadow" style="height:101%; margin: 0;" data-trim="true">
-              <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
+              <code class="x86asm" data-trim="true" data-noescape="true" style="height:100%">
 $ java -Djava.library.path=examples/cpp/ -Xbatch \
        -XX:+PrintCompilation -XX:+UnlockDiagnosticVMOptions \
        -XX:+PrintInterpreter -XX:+PrintNativeNMethods \
@@ -2442,10 +2442,10 @@ openjdk version "21" 2023-09-19 LTS
 
             <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
               <code class="java" data-trim="true" data-noescape="true" style="height:100%">
-  public static native void staticEmpty();
-  public static native void jniCriticalEmpty();
-  public static native long staticArray(byte[] b);
-  public static native long jniCriticalArray(byte[] b);
+  public static native void <span class="fragment highlight-current-border border-no-bottom" data-fragment-index="3">staticEmpty();     </span>
+  public static native void <span class="fragment highlight-current-border border-no-top" data-fragment-index="3">jniCriticalEmpty();</span>
+  public static native long <span class="fragment highlight-current-border border-no-bottom" data-fragment-index="5">staticArray(byte[] b);     </span>
+  public static native long <span class="fragment highlight-current-border border-no-top" data-fragment-index="5">jniCriticalArray(byte[] b);</span>
 
   @Benchmark
   public void callingStaticEmpty() {
@@ -2473,25 +2473,25 @@ openjdk version "21" 2023-09-19 LTS
               <code class="cpp" data-trim="true" data-noescape="true" style="height:100%">
 void         Java_io_simonis_NativeCall_staticEmpty(JNIEnv*, jclass) {}
 
-void         Java_io_simonis_NativeCall_jniCriticalEmpty(JNIEnv*, jclass) {}
-void JavaCritical_io_simonis_NativeCall_jniCriticalEmpty() {}
+void <span class="fragment highlight-current-border border-no-bottom" data-fragment-index="5">        Java</span>_io_simonis_NativeCall_<span class="fragment highlight-current-border border-no-bottom" data-fragment-index="3">jniCriticalEmpty</span>(JNIEnv*, jclass) {}
+void <span class="fragment highlight-current-border border-no-top" data-fragment-index="5"><span class="fragment highlight-current-border" data-fragment-index="7">JavaCritical</span></span>_io_simonis_NativeCall_<span class="fragment highlight-current-border border-no-top" data-fragment-index="3">jniCriticalEmpty</span><span class="fragment highlight-current-border" data-fragment-index="7">()</span> {}
 
-long Java_io_simonis_NativeCall_staticArray(JNIEnv* env, jclass cls, jbyteArray b) {
-  jbyte* jb = (jbyte*)env->GetPrimitiveArrayCritical(b, 0);
-  jbyte ret = *jb;
-  env->ReleasePrimitiveArrayCritical(b, jb, JNI_ABORT);
+long <span class="fragment highlight-current-border" data-fragment-index="9">Java_io_simonis_NativeCall_staticArray</span>(JNIEnv* env, jclass cls, jbyteArray b) {
+  <span class="fragment highlight-current-border" data-fragment-index="11">jbyte* jb = (jbyte*)env->GetPrimitiveArrayCritical(b, 0)</span>;
+  jbyte <span class="fragment highlight-current-border" data-fragment-index="13">ret = *jb</span>;
+  <span class="fragment highlight-current-border" data-fragment-index="11">env->ReleasePrimitiveArrayCritical(b, jb, JNI_ABORT)</span>;
   return ret;
 }
 
-long Java_io_simonis_NativeCall_jniCriticalArray(JNIEnv* env, jclass cls, jbyteArray b) {
-  jbyte* jb = (jbyte*)env->GetPrimitiveArrayCritical(b, 0);
-  jbyte ret = *jb;
-  env->ReleasePrimitiveArrayCritical(b, jb, JNI_ABORT);
+long <span class="fragment highlight-current-border" data-fragment-index="9">Java_io_simonis_NativeCall_jniCriticalArray</span>(JNIEnv* env, jclass cls, jbyteArray b) {
+  <span class="fragment highlight-current-border" data-fragment-index="11">jbyte* jb = (jbyte*)env->GetPrimitiveArrayCritical(b, 0)</span>;
+  jbyte <span class="fragment highlight-current-border" data-fragment-index="13">ret = *jb</span>;
+  <span class="fragment highlight-current-border" data-fragment-index="11">env->ReleasePrimitiveArrayCritical(b, jb, JNI_ABORT)</span>;
   return ret;
 }
 
-long JavaCritical_io_simonis_NativeCall_jniCriticalArray(jint length, jbyte* b) {
-  return *b;
+long <span class="fragment highlight-current-border" data-fragment-index="15">JavaCritical</span>_io_simonis_NativeCall_<span class="fragment highlight-current-border" data-fragment-index="15">jniCriticalArray(jint length, jbyte* b)</span> {
+  <span class="fragment highlight-current-border" data-fragment-index="17">return *b</span>;
 }
               </code>
             </pre>
@@ -2654,6 +2654,240 @@ NativeCall.callingStaticEmpty              1  avgt    5  21.145 ± 0.002  ns/op
 
         <section data-background="images/background_default.jpg" class="demo" style="height: 100%;">
 
+          <section data-background="images/background_default.jpg" class="demo">
+
+            <h2><a href="https://github.com/apangin/nalim">Nalim</a> - using JVMCI to speedup native calls</h2>
+
+            <ul>
+              <li>Invented by Andrei Pangin (author of
+                <a href="https://github.com/async-profiler/async-profiler">AsyncProfiler</a>)</li>
+              <li>Leverages <a href="https://openjdk.org/jeps/243">JVM Compiler Interface</a> (JVMCI)</li>
+              <li>Elegant and fast (skips native transition)
+                <ul>
+                  <li>..but blocks Safepoint synchronization</li>
+                </ul>
+              </li>
+              <li>Only static methods with primitive/array/field arguments </li>
+              <li>No <code>JNIEnv*</code>, no Java up-calls</li>
+              <li>Not <em>officially</em> supported
+                <ul>
+                  <li>..JVMCI interfaces not publicly exported</li>
+                </ul>
+              </li>
+            </ul>
+          </section>
+
+          <section data-background="images/background_default.jpg" class="demo">
+
+            <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+              <code class="java" data-trim="true" data-noescape="true" style="height:100%">
+<span class="fragment highlight-current-border border-no-bottom" data-fragment-index="3">import one.nalim.Link;  </span>
+<span class="fragment highlight-current-border border-no-top" data-fragment-index="3">import one.nalim.Linker;</span>
+
+  <span class="fragment highlight-current-border" data-fragment-index="5">@Link</span>
+  public static native void nalimEmpty();
+  <span class="fragment highlight-current-border" data-fragment-index="5">@Link</span>
+  public static native long nalimArray(<span class="fragment highlight-current-border" data-fragment-index="7">int length, byte[] b</span>);
+
+  @Benchmark
+  public void callingNalimEmpty() {
+    nalimEmpty();
+  }
+
+  @Benchmark
+  public void callingNalimArray() {
+    nalimArray(<span class="fragment highlight-current-border" data-fragment-index="7">array.length, array</span>);
+  }
+              </code>
+            </pre>
+          </section>
+
+          <section data-background="images/background_default.jpg" class="demo">
+
+            <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+              <code class="cpp" data-trim="true" data-noescape="true" style="height:100%">
+extern "C" JNIEXPORT
+void JNICALL <span class="fragment highlight-current-border" data-fragment-index="3">nalimEmpty</span>() {}
+
+extern "C" JNIEXPORT
+long JNICALL <span class="fragment highlight-current-border" data-fragment-index="3">nalimArray</span>(<span class="fragment highlight-current-border" data-fragment-index="5">jint length, jbyte* b</span>) {
+  <span class="fragment highlight-current-border" data-fragment-index="5">return *b</span>;
+}
+              </code>
+            </pre>
+          </section>
+
+          <section data-background="images/background_default.jpg" class="demo">
+
+            <h2>Benchmark: JNI - Critical JNI - Nalim</h2>
+            <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+              <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
+$ java <span class="fragment highlight-current-border" data-fragment-index="3">-XX:-UseMembar</span> -jar benchmarks.jar
+# JMH version: 1.37
+# VM version: <span class="fragment highlight-current-border" data-fragment-index="3">JDK 11.0.18</span>, OpenJDK 64-Bit Server VM, 11.0.18+10-LTS
+...
+Benchmark                           (length)  Mode  Cnt   Score   Error  Units
+
+NativeCall.callingStaticEmpty              1  avgt    5  <span class="fragment highlight-current-border border-no-bottom" data-fragment-index="5">11.640</span> ± 0.012  ns/op
+NativeCall.callingJniCriticalEmpty         1  avgt    5  <span class="fragment highlight-current-border border-no-bottom-top" data-fragment-index="5">10.180</span> ± 0.066  ns/op
+NativeCall.callingNalimEmpty               1  avgt    5  <span class="fragment highlight-current-border border-no-top" data-fragment-index="5"> 3.703</span> ± 0.005  ns/op
+
+NativeCall.callingStaticArray              1  avgt    5  <span class="fragment highlight-current-border border-no-bottom" data-fragment-index="7">71.623</span> ± 0.369  ns/op
+NativeCall.callingJniCriticalArray         1  avgt    5  <span class="fragment highlight-current-border border-no-bottom-top" data-fragment-index="7">12.173</span> ± 0.036  ns/op
+NativeCall.callingNalimArray               1  avgt    5  <span class="fragment highlight-current-border border-no-top" data-fragment-index="7"> 4.984</span> ± 0.011  ns/op
+              </code>
+            </pre>
+<!--
+Laptop (benchmark_start.sh / cset)
+
+# JMH version: 1.37
+# VM version: JDK 11.0.18, OpenJDK 64-Bit Server VM, 11.0.18+10-LTS
+
+Corretto 11 -XX:-UseMembar
+============
+Benchmark                           (length)  Mode  Cnt   Score   Error  Units
+NativeCall.callingJniCriticalArray         1  avgt    5  12.173 ± 0.036  ns/op
+NativeCall.callingJniCriticalEmpty         1  avgt    5  10.180 ± 0.066  ns/op
+NativeCall.callingNalimArray               1  avgt    5   4.984 ± 0.011  ns/op
+NativeCall.callingNalimEmpty               1  avgt    5   3.703 ± 0.005  ns/op
+NativeCall.callingStaticArray              1  avgt    5  71.623 ± 0.369  ns/op
+NativeCall.callingStaticEmpty              1  avgt    5  11.640 ± 0.012  ns/op
+
+Corretto 11
+============
+Benchmark                           (length)  Mode  Cnt    Score   Error  Units
+NativeCall.callingJniCriticalArray         1  avgt    5   20.634 ± 0.024  ns/op
+NativeCall.callingJniCriticalEmpty         1  avgt    5   18.519 ± 0.023  ns/op
+NativeCall.callingNalimArray               1  avgt    5    3.918 ± 0.004  ns/op
+NativeCall.callingNalimEmpty               1  avgt    5    3.704 ± 0.005  ns/op
+NativeCall.callingStaticArray              1  avgt    5  109.295 ± 0.145  ns/op
+NativeCall.callingStaticEmpty              1  avgt    5   20.106 ± 0.027  ns/op
+
+Corretto 17
+============
+Benchmark                           (length)  Mode  Cnt   Score   Error  Units
+NativeCall.callingJniCriticalArray         1  avgt    5   9.524 ± 0.011  ns/op
+NativeCall.callingJniCriticalEmpty         1  avgt    5   9.085 ± 0.010  ns/op
+NativeCall.callingNalimArray               1  avgt    5   3.919 ± 0.008  ns/op
+NativeCall.callingNalimEmpty               1  avgt    5   3.177 ± 0.003  ns/op
+NativeCall.callingStaticArray              1  avgt    5  81.926 ± 0.185  ns/op
+NativeCall.callingStaticEmpty              1  avgt    5  19.573 ± 0.010  ns/op
+-->
+          </section>
+
+          <section data-background="images/background_default.jpg" class="demo">
+
+            <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+              <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
+$ java -XX:CompileCommand=option,*::nalim*,PrintAssembly \                        
+       -jar benchmarks.jar
+              </code>
+            </pre>
+            <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+              <code class="x86asm" data-trim="true" data-noescape="true" style="height:100%">
+<span class="fragment" data-fragment-index="3">=========================== JVMCI-compiled nmethod =============================
+Compiled method (JVMCI) 882  1  n  4  <span class="fragment highlight-current-border" data-fragment-index="5">io.simonis.NativeCall::nalimEmpty</span> (native)
+[Verified Entry Point]
+  # {method} {0x00007fff9447d630} 'nalimEmpty' '()V' in 'io/simonis/NativeCall'
+  #           [sp+0x0]  (sp of caller)
+  0x00007fffe0ef8b80:   <span class="fragment highlight-current-border border-no-bottom" data-fragment-index="7">movabs $0x7ffff7e3e16a,%rax</span>
+  0x00007fffe0ef8b8a:   <span class="fragment highlight-current-border border-no-top" data-fragment-index="7">jmpq   *%rax               </span></span>
+<span class="fragment" data-fragment-index="9">
+=========================== JVMCI-compiled nmethod =============================
+Compiled method (JVMCI) 883  1  n  4  <span class="fragment highlight-current-border" data-fragment-index="11">io.simonis.NativeCall::nalimArray</span> (native)
+[Verified Entry Point]
+  # {method} {0x00007fff9447d810} 'nalimArray' '(I[B)J' in 'io/simonis/NativeCall'
+  # <span class="fragment highlight-current-border border-no-bottom" data-fragment-index="13">parm0:    rsi       = int </span>
+  # <span class="fragment highlight-current-border border-no-top" data-fragment-index="13">parm1:    rdx:rdx   = '[B'</span>
+  #           [sp+0x0]  (sp of caller)
+  0x00007fffe0ef9c80:   <span class="fragment highlight-current-border border-no-bottom" data-fragment-index="15">mov    %esi,%edi           </span>
+  0x00007fffe0ef9c82:   <span class="fragment highlight-current-border border-no-bottom-top" data-fragment-index="15">lea    0x10(%rdx),%rsi     </span>
+  0x00007fffe0ef9c86:   <span class="fragment highlight-current-border border-no-bottom-top" data-fragment-index="15">movabs $0x7ffff7e3e24d,%rax</span>
+  0x00007fffe0ef9c90:   <span class="fragment highlight-current-border border-no-top" data-fragment-index="15">jmpq   *%rax               </span></span>
+              </code>
+            </pre>
+<!--
+LD_LIBRARY_PATH=/priv/simonisv/OpenJDK/hsdis/linux-amd64 /share/software/Java/corretto-17/bin/java -XX:CompileCommand=option,io.simonis.NativeCall::nalim*,PrintAssembly -XX:+UnlockDiagnosticVMOptions -XX:-PrintNMethods -Dgraal.PrintCompilation=true -XX:-CITime -XX:-PrintCompilation -XX:+CriticalJNINatives -XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCI __add-exports jdk.internal.vm.ci/jdk.vm.ci.code=ALL-UNNAMED __add-exports jdk.internal.vm.ci/jdk.vm.ci.code.site=ALL-UNNAMED __add-exports jdk.internal.vm.ci/jdk.vm.ci.hotspot=ALL-UNNAMED __add-exports jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED __add-exports jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED -Djava.library.path=target/native -jar target/benchmarks.jar io.simonis.NativeCall.callingNalimArray$
+
+OpenJDK 64-Bit Server VM warning: Option CriticalJNINatives was deprecated in version 16.0 and will likely be removed in a future release.
+CompileCommand: PrintAssembly io/simonis/NativeCall.nalim* bool PrintAssembly = true
+=========================== JVMCI-compiled nmethod =============================
+- - - - - - - - - - - - - - - - - - Assembly - - - - - - - - - - - - - - - - - -
+
+Compiled method (JVMCI)     882    1     n 4       io.simonis.NativeCall::nalimEmpty (native)
+ total in heap  [0x00007fffe0ef8a10,0x00007fffe0ef8be8] = 472
+ main code      [0x00007fffe0ef8b80,0x00007fffe0ef8b8c] = 12
+ stub code      [0x00007fffe0ef8b8c,0x00007fffe0ef8b90] = 4
+ oops           [0x00007fffe0ef8b90,0x00007fffe0ef8b98] = 8
+ scopes data    [0x00007fffe0ef8b98,0x00007fffe0ef8ba0] = 8
+ scopes pcs     [0x00007fffe0ef8ba0,0x00007fffe0ef8bc0] = 32
+ dependencies   [0x00007fffe0ef8bc0,0x00007fffe0ef8bc8] = 8
+ JVMCI data     [0x00007fffe0ef8bc8,0x00007fffe0ef8be8] = 32
+
+[Disassembly]
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+[Constant Pool (empty)]
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+[Verified Entry Point]
+  # {method} {0x00007fff9447d630} 'nalimEmpty' '()V' in 'io/simonis/NativeCall'
+  #           [sp+0x0]  (sp of caller)
+  0x00007fffe0ef8b80:   movabs $0x7ffff7e3e16a,%rax
+  0x00007fffe0ef8b8a:   jmpq   *%rax
+[Stub Code]
+  0x00007fffe0ef8b8c:   hlt    
+  0x00007fffe0ef8b8d:   hlt    
+  0x00007fffe0ef8b8e:   hlt    
+  0x00007fffe0ef8b8f:   hlt    
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+[/Disassembly]
+
+=========================== JVMCI-compiled nmethod =============================
+- - - - - - - - - - - - - - - - - - Assembly - - - - - - - - - - - - - - - - - -
+
+Compiled method (JVMCI)     883    1     n 4       io.simonis.NativeCall::nalimArray (native)
+ total in heap  [0x00007fffe0ef9b10,0x00007fffe0ef9cf0] = 480
+ main code      [0x00007fffe0ef9c80,0x00007fffe0ef9c92] = 18
+ stub code      [0x00007fffe0ef9c92,0x00007fffe0ef9c98] = 6
+ oops           [0x00007fffe0ef9c98,0x00007fffe0ef9ca0] = 8
+ scopes data    [0x00007fffe0ef9ca0,0x00007fffe0ef9ca8] = 8
+ scopes pcs     [0x00007fffe0ef9ca8,0x00007fffe0ef9cc8] = 32
+ dependencies   [0x00007fffe0ef9cc8,0x00007fffe0ef9cd0] = 8
+ JVMCI data     [0x00007fffe0ef9cd0,0x00007fffe0ef9cf0] = 32
+
+[Disassembly]
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+[Constant Pool (empty)]
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+[Verified Entry Point]
+  # {method} {0x00007fff9447d810} 'nalimArray' '(I[B)J' in 'io/simonis/NativeCall'
+  # parm0:    rsi       = int
+  # parm1:    rdx:rdx   = '[B'
+  #           [sp+0x0]  (sp of caller)
+  0x00007fffe0ef9c80:   mov    %esi,%edi
+  0x00007fffe0ef9c82:   lea    0x10(%rdx),%rsi
+  0x00007fffe0ef9c86:   movabs $0x7ffff7e3e24d,%rax
+  0x00007fffe0ef9c90:   jmpq   *%rax
+[Stub Code]
+  0x00007fffe0ef9c92:   hlt    
+  0x00007fffe0ef9c93:   hlt    
+  0x00007fffe0ef9c94:   hlt    
+  0x00007fffe0ef9c95:   hlt    
+  0x00007fffe0ef9c96:   hlt    
+  0x00007fffe0ef9c97:   hlt    
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+[/Disassembly]
+
+-->
+          </section>
+        </section>
+
+
+        <section data-background="images/background_default.jpg" class="demo" style="height: 100%;">
+
           <section data-background="images/background_default.jpg">
             <h1>References</h1>
 
@@ -2703,6 +2937,8 @@ NativeCall.callingStaticEmpty              1  avgt    5  21.145 ± 0.002  ns/op
                     Calling native methods without a JNI overhead</a></li>
                 <li><a href="https://bugs.openjdk.org/browse/JDK-7013347">
                     JDK-7013347: allow crypto functions to be called inline to enhance performance</a></li>
+                <li><a href="https://bugs.openjdk.org/browse/JDK-8167408">
+                    JDK-8167408: Invalid critical JNI function lookup</a></li>
                 <li><a href="https://bugs.openjdk.org/browse/JDK-8233343">
                     JDK-8233343: Deprecate -XX:+CriticalJNINatives flag which implements JavaCritical native functions</a></li>
                 <li><a href="https://bugs.openjdk.org/browse/JDK-8258192">
