@@ -2720,6 +2720,7 @@ long JNICALL <span class="fragment highlight-current-border" data-fragment-index
           <section data-background="images/background_default.jpg" class="demo">
 
             <h2>Benchmark: JNI - Critical JNI - Nalim</h2>
+
             <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
               <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
 $ java <span class="fragment highlight-current-border" data-fragment-index="3">-XX:-UseMembar</span> -jar benchmarks.jar
@@ -2889,6 +2890,172 @@ Compiled method (JVMCI)     883    1     n 4       io.simonis.NativeCall::nalimA
 
           <section data-background="images/background_default.jpg">
             <h1><a href="https://github.com/java-native-access">JNA</a> - Java Native Access</h1>
+
+            <ul>
+              <li>Pure Java access to native libraries</li>
+              <li>Builds on JNI
+                <ul>
+                  <li>Can&apos;t be faster than JNI!</li>
+                </ul>
+              </li>
+              <li>Uses Java interfaces to describe native functionality</li>
+              <li>Loads the native library and creates glue code:
+                <ol>
+                  <li>Using reflection (<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/reflect/Proxy.html">
+                      j.l.r.Proxy</a>) on the Java side </li>
+                  <li>Using <a href="https://github.com/atgreen/libffi">libffi</a> on the native side</li>
+                </ol>
+              </li>
+              <li>libffi is a <em>portable foreign-function interface library</em>
+                <ul>
+                  <li>E.g. used by the <a href="https://web.archive.org/web/20090531095111/http://today.java.net/pub/a/today/2009/05/21/zero-and-shark-openjdk-port.html">
+                      OpenJDK Zero Assembler Port</a>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </section>
+
+          <section data-background="images/background_default.jpg" class="demo">
+
+            <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+              <code class="java" data-trim="true" data-noescape="true" style="height:100%">
+public class NativeCallJNA {
+<span class="fragment" data-fragment-index="3">
+  public interface CLibrary extends Library {
+    void sayHello(String s);
+    String getLine();
+  }
+</span><span class="fragment" data-fragment-index="10">
+  public static native void sayHello(String s);
+  public static native String getLine();
+  static {
+    <span class="fragment highlight-current-border" data-fragment-index="11">Native.register("NativeCallJNA")</span>;
+  }
+</span>
+  public static void main(String[] args) {
+<span class="fragment highlight" data-fragment-index="4">    CLibrary c = <span class="fragment highlight-current-border" data-fragment-index="5">Native.load("NativeCallJNA", CLibrary.class)</span>;
+    <span class="fragment highlight-current-border" data-fragment-index="6">c.sayHello("JavaLand")</span>;
+    System.out.println(<span class="fragment highlight-current-border" data-fragment-index="6">c.getLine()</span>);</span><span class="fragment" data-fragment-index="14">
+    sayHello("JavaLand DIRECT");
+    System.out.println(getLine());</span>
+  }
+}
+              </code>
+            </pre>
+          </section>
+
+          <section data-background="images/background_default.jpg" class="demo">
+
+            <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+              <code class="cpp" data-trim="true" data-noescape="true" style="height:100%">
+#include &lt;stdio.h&gt;
+
+void sayHello(<span class="fragment highlight-current-border" data-fragment-index="1">char* s</span>) {
+  printf("Hello %s\n", s);
+}
+
+<span class="fragment highlight-current-border" data-fragment-index="1">char*</span> getLine() {
+  char* line = 0;
+  size_t len = 0;
+  getline(&amp;line, &amp;len, stdin);
+  return line;
+}
+              </code>
+            </pre>
+          </section>
+
+          <section data-background="images/background_default.jpg" class="demo">
+
+            <div style="width: 100%">
+              <div style="float: left; width: 35%">
+
+                <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+                  <code class="terminal" data-trim="false" data-noescape="true" style="height:100%">
+$ java -Djna.library.path=..\
+     io.simonis.NativeCallJNA
+
+Hello JavaLand
+
+<span class="fragment" data-fragment-index="25">&lt;RETURN&gt;</span>
+<span class="fragment" data-fragment-index="25">Hello JavaLand DIRECT</span>
+
+
+
+
+
+
+
+
+
+
+
+
+<span>&nbsp;</span>
+                </code>
+              </pre>
+
+              </div>
+              <div style="position:relative; float: right; width: 64%">
+
+
+                <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+                  <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
+<span class="fragment" data-fragment-index="3">$ gdb ...</span>
+<span class="fragment" data-fragment-index="5">(gdb) where</span>
+<span class="fragment" data-fragment-index="7">#0 <span class="fragment highlight-current-border" data-fragment-index="9">getLine()</span> at examples/cpp/<span class="fragment highlight-current-border" data-fragment-index="9">NativeCallJNA.cpp:9</span>
+#1 0x16052 in ??
+#2 0x1511c in ??
+#3 0x15458 in <span class="fragment highlight-current-border" data-fragment-index="11">ffi_call()</span>
+#4 0x0aa5a in ??
+#5 0x0b081 in Java_com_sun_<span class="fragment highlight-current-border" data-fragment-index="13">jna_Native_invokePointer()</span></span>
+<span class="fragment" data-fragment-index="15">$ jstack ...</span>
+<span class="fragment" data-fragment-index="17">at com.sun.<span class="fragment highlight-current-border" data-fragment-index="19">jna.Native.invokePointer(Native Method)</span>
+at com.sun.jna.Function.invokePointer(Function.java:500)
+at com.sun.jna.Function.invokeString(Function.java:663)
+at com.sun.jna.Function.invoke(Function.java:437)
+at com.sun.jna.Function.invoke(Function.java:364)
+at com.sun.jna.Library$Handler.invoke(Library.java:270)
+at jdk.proxy2.<span class="fragment highlight-current-border" data-fragment-index="23">$Proxy2.getLine(Unknown Source)</span>
+at io.simonis.<span class="fragment highlight-current-border" data-fragment-index="21">NativeCallJNA.main</span>(NativeCallJNA.java:23)</span>
+<span class="fragment" data-fragment-index="27">$ jstack ...</span>
+<span class="fragment" data-fragment-index="29">at io.simonis.<span class="fragment highlight-current-border" data-fragment-index="31">NativeCallJNA.getLine(Native Method)</span>
+at io.simonis.NativeCallJNA.main(NativeCallJNA.java:25)</span>
+                  </code>
+                </pre>
+              </div>
+            </div>
+<!--
+java -Djna.debug_load.jna=true -Djna.debug_load=true -Djnidispatch.preserve=true -Djava.library.path=/tmp/com/sun/jna/linux-x86-64 -Djna.library.path=examples/cpp -cp /tmp/com/sun/jna/linux-x86-64:examples/deps/jna-5.14.0.jar:examples/java io.simonis.NativeCallJNA
+
+Hello JavaLand
+
+Thread 2 "java" hit Breakpoint 1, getLine () at examples/cpp/NativeCallJNA.cpp:9
+9	char* getLine() {
+(gdb) where
+#0  getLine () at examples/cpp/NativeCallJNA.cpp:9
+#1  0x00007fffb7416052 in ?? () from /home/ANT.AMAZON.COM/simonisv/.cache/JNA/temp/jna8224722017600131272.tmp
+#2  0x00007fffb741511c in ?? () from /home/ANT.AMAZON.COM/simonisv/.cache/JNA/temp/jna8224722017600131272.tmp
+#3  0x00007fffb7415458 in ffi_call () from /home/ANT.AMAZON.COM/simonisv/.cache/JNA/temp/jna8224722017600131272.tmp
+#4  0x00007fffb740aa5a in ?? () from /home/ANT.AMAZON.COM/simonisv/.cache/JNA/temp/jna8224722017600131272.tmp
+#5  0x00007fffb740b081 in Java_com_sun_jna_Native_invokePointer () from /home/ANT.AMAZON.COM/simonisv/.cache/JNA/temp/jna8224722017600131272.tmp
+#6  0x00007fffdfb4710e in ?? ()
+
+	at com.sun.jna.Native.invokePointer(Native Method)
+	at com.sun.jna.Function.invokePointer(Function.java:500)
+	at com.sun.jna.Function.invokeString(Function.java:663)
+	at com.sun.jna.Function.invoke(Function.java:437)
+	at com.sun.jna.Function.invoke(Function.java:364)
+	at com.sun.jna.Library$Handler.invoke(Library.java:270)
+	at jdk.proxy2.$Proxy2.getLine(jdk.proxy2/Unknown Source)
+	at io.simonis.NativeCallJNA.main(NativeCallJNA.java:23)
+
+Hello JavaLand DIRECT
+
+	at io.simonis.NativeCallJNA.getLine(Native Method)
+	at io.simonis.NativeCallJNA.main(NativeCallJNA.java:25)
+
+-->
           </section>
 
         </section>
