@@ -22,7 +22,7 @@
     <link rel="stylesheet" href="reveal.js/lib/css/monokai_sublime.css" />
 
     <style type="text/css">
-/* display preprocessor directives italic (could also handle 'hljs-meta-keyword' (for "include" and 'hljs-meta-string' for the inlcude file in the future) */
+/* display preprocessor directives italic (could also handle 'hljs-meta-keyword' (for "include" and 'hljs-meta-string' for the include file in the future) */
 .hljs-meta {
   color: #7571ff;
   font-style: italic;
@@ -541,7 +541,6 @@ table tbody tr td em {
             <li>Principal Software Engineer @ Amazon Corretto</li>
             <li>OpenJDK Member, Committer &amp; Reviewer</li>
             <li>OpenJDK Build, Hotspot, Porters &amp; Vulnerability Group</li>
-            <li>OpenJDK Governing Board</li>
             <li>Java Community Process Executive Committee</li>
           </ul>
 
@@ -549,6 +548,7 @@ table tbody tr td em {
             <li>SAP JVM and SapMachine @ SAP</li>
             <li>OpenJDK Build PowerPC/AIX &amp; s390x Project Lead </li>
             <li>JCP Expert Groups for Java SE 9 to 13</li>
+            <li>OpenJDK Governing Board</li>
           </ul>
         </section>
 
@@ -1132,7 +1132,7 @@ $ java -XX:+PrintCompilation ...
             <ul>
               <li>The Interpreter <a href="https://github.com/openjdk/jdk/blob/21867c929a2f2c961148f2cd1e79d672ac278d27/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L67">passes all arguments on the stack</a>
               </li>
-              <li><a href="https://github.com/openjdk/jdk/blob/21867c929a2f2c961148f2cd1e79d672ac278d27/src/hotspot/cpu/x86/assembler_x86.hpp#L97">Comiled Calling Conventions</a> are a shifted version of the Native CC</li>
+              <li><a href="https://github.com/openjdk/jdk/blob/21867c929a2f2c961148f2cd1e79d672ac278d27/src/hotspot/cpu/x86/assembler_x86.hpp#L97">Compiled Calling Conventions</a> are a shifted version of the Native CC</li>
             </ul>
             <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
               <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
@@ -1148,7 +1148,7 @@ Java  | j_rarg5   <span class="fragment highlight-current-border" data-fragment-
             </pre>
             <ul>
               <li class="fragment">Allows calling native methods without argument shuffling (<code>JNIEnv*</code>)</li>
-              <li class="fragment">Static native methods requier an extra slot for the <code>jclass</code> argument</li>
+              <li class="fragment">Static native methods require an extra slot for the <code>jclass</code> argument</li>
             </ul>
           </section>
 
@@ -2276,7 +2276,7 @@ Hello JavaLand
             <h1>Accessing the Java heap from Native</h1>
 
             <ul>
-              <li>Java objects anly accessible through references (GC-safe)</li>
+              <li>Java objects only accessible through references (GC-safe)</li>
               <li>Too slow for primitive array data:
                 <ol class="fragment">
                   <li>Copy array data -> safe but slow</li>
@@ -2430,7 +2430,7 @@ openjdk version "21" 2023-09-19 LTS
               </li>
               <li>Only for compiled methods (i.e. native wrapper)
                 <ul>
-                  <li>Need both, JNI and Critcal JNI method<br/><br/></li>
+                  <li>Need both, JNI and Critical JNI method<br/><br/></li>
                 </ul>
               </li>
               <li>Deprecated in JDK 16 (<a href="https://bugs.openjdk.org/browse/JDK-8233343">JDK-8233343</a>)</li>
@@ -2497,10 +2497,9 @@ long <span class="fragment highlight-current-border" data-fragment-index="15">Ja
             </pre>
           </section>
 
-
           <section data-background="images/background_default.jpg" class="demo">
 
-            <h1>Benchmark: JNI vs. Critical JNI Call</h1>
+            <h1>Benchmark: JNI vs. Critical JNI</h1>
             <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
               <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
 $ java -jar benchmarks.jar
@@ -2571,10 +2570,10 @@ NativeCall.callingStaticEmpty              1  avgt    5  21.145 ± 0.002  ns/op
 
             <ul>
               <li>HotSpot uses a <em>cooperative</em> suspension model</li>
-              <li>All threads need to come to a safepoint quickly if required
+              <li>All threads need to come to a Safepoint quickly if required
                 <ul>
                   <li>Running <code>in_Java</code> (Interpreted): change interpreter dispatch table</li>
-                  <li>Running <code>in_Java</code> (JIT-compiled): read global safepoint polling page</li>
+                  <li>Running <code>in_Java</code> (JIT-compiled): read global Safepoint polling page</li>
                   <li>Running <code>in_native</code> (JNI): no need to stop<br/>
                     - native code accesses oops through handles<br/>
                     - block when returning from JNI or up-calling to Java</li>
@@ -2719,7 +2718,7 @@ long JNICALL <span class="fragment highlight-current-border" data-fragment-index
 
           <section data-background="images/background_default.jpg" class="demo">
 
-            <h2>Benchmark: JNI - Critical JNI - Nalim</h2>
+            <h2>Benchmark: JNI vs. Critical JNI vs. Nalim</h2>
 
             <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
               <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
@@ -3058,6 +3057,73 @@ Hello JavaLand DIRECT
 -->
           </section>
 
+          <section data-background="images/background_default.jpg" class="demo">
+
+            <h1>Benchmark: JNI vs. JNA</h1>
+            <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+              <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
+$ java -XX:+UseSystemMemoryBarrier -jar benchmarks.jar
+# JMH version: 1.37
+# VM version: JDK 22, OpenJDK 64-Bit Server VM, 22+37-FR
+...
+Benchmark                           Mode  Cnt     Score    Error  Units
+
+NativeCall.callingStaticEmpty       avgt    5   <span class="fragment highlight-current-border border-no-bottom" data-fragment-index="1"> 11.283</span> ±  0.041  ns/op
+NativeCall.callingJnaEmpty          avgt    5   <span class="fragment highlight-current-border border-no-bottom-top" data-fragment-index="1">138.645</span> ±  8.999  ns/op
+NativeCall.callingJnaDirectEmpty    avgt    5   <span class="fragment highlight-current-border border-no-top" data-fragment-index="1">130.662</span> ±  0.669  ns/op
+
+NativeCall.callingStaticArray       avgt    5  <span class="fragment highlight-current-border border-no-bottom" data-fragment-index="3">  60.913</span> ±  0.241  ns/op
+NativeCall.callingJnaArray          avgt    5  <span class="fragment highlight-current-border border-no-bottom-top" data-fragment-index="3">1087.483</span> ± 23.027  ns/op
+NativeCall.callingJnaDirectArray    avgt    5  <span class="fragment highlight-current-border border-no-top" data-fragment-index="3"> 275.942</span> ±  0.715  ns/op
+              </code>
+            </pre>
+<!--
+Laptop (benchmark_start.sh / cset)
+
+sudo cset shield __user=simonisv __group=domain^users __exec bash __ -c '/share/software/Java/corretto-22/bin/java -XX:+UseSystemMemoryBarrier -Djava.library.path=target/native -Djna.library.path=target/native -jar target/benchmarks.jar io.simonis.NativeCall.callingStaticEmpty$ io.simonis.NativeCall.callingFfiEmpty$ io.simonis.NativeCall.callingFfiCriticalEmpty$ io.simonis.NativeCall.callingStaticArray$ io.simonis.NativeCall.callingFfiArray$ io.simonis.NativeCall.callingFfiCriticalArray$ io.simonis.NativeCall.callingFfiCriticalHeapAccessArray$ io.simonis.NativeCall.callingJnaArray$ io.simonis.NativeCall.callingJnaDirectArray$ io.simonis.NativeCall.callingJnaEmpty io.simonis.NativeCall.callingJnaDirectEmpty$'
+
+Corretto 22
+===========
+Benchmark                                     (length)  Mode  Cnt     Score    Error  Units
+NativeCall.callingFfiArray                           1  avgt    5   114.419 ±  0.567  ns/op
+NativeCall.callingFfiCriticalArray                   1  avgt    5   103.080 ±  0.522  ns/op
+NativeCall.callingFfiCriticalHeapAccessArray         1  avgt    5    22.284 ±  0.148  ns/op
+NativeCall.callingFfiEmpty                           1  avgt    5    12.753 ±  0.450  ns/op
+NativeCall.callingJnaArray                           1  avgt    5  1087.483 ± 23.027  ns/op
+NativeCall.callingJnaDirectArray                     1  avgt    5   275.942 ±  0.715  ns/op
+NativeCall.callingJnaDirectEmpty                     1  avgt    5   130.662 ±  0.669  ns/op
+NativeCall.callingJnaEmpty                           1  avgt    5   138.645 ±  8.999  ns/op
+NativeCall.callingStaticArray                        1  avgt    5    60.913 ±  0.241  ns/op
+NativeCall.callingStaticEmpty                        1  avgt    5    11.283 ±  0.041  ns/op
+
+Benchmark                                     (length)  Mode  Cnt     Score    Error  Units
+NativeCall.callingFfiArray                           1  avgt    5   109.731 ±  0.169  ns/op
+NativeCall.callingFfiCriticalArray                   1  avgt    5   104.643 ±  0.333  ns/op
+NativeCall.callingFfiCriticalHeapAccessArray         1  avgt    5    22.235 ±  0.111  ns/op
+NativeCall.callingFfiEmpty                           1  avgt    5    12.759 ±  0.376  ns/op
+NativeCall.callingJnaArray                           1  avgt    5  1093.620 ± 13.428  ns/op
+NativeCall.callingJnaDirectArray                     1  avgt    5   276.003 ±  0.264  ns/op
+NativeCall.callingJnaDirectEmpty                     1  avgt    5   130.393 ±  0.453  ns/op
+NativeCall.callingJnaEmpty                           1  avgt    5   141.435 ± 13.097  ns/op
+NativeCall.callingStaticArray                        1  avgt    5    59.968 ±  0.269  ns/op
+NativeCall.callingStaticEmpty                        1  avgt    5    11.280 ±  0.030  ns/op
+
+Benchmark                                     (length)  Mode  Cnt     Score    Error  Units
+NativeCall.callingFfiArray                           1  avgt    5   115.165 ±  0.533  ns/op
+NativeCall.callingFfiCriticalArray                   1  avgt    5   103.978 ±  0.534  ns/op
+NativeCall.callingFfiCriticalEmpty                   1  avgt    5    13.248 ±  0.050  ns/op
+NativeCall.callingFfiCriticalHeapAccessArray         1  avgt    5    22.271 ±  0.108  ns/op
+NativeCall.callingFfiEmpty                           1  avgt    5    12.775 ±  0.471  ns/op
+NativeCall.callingJnaArray                           1  avgt    5  1048.369 ± 18.619  ns/op
+NativeCall.callingJnaDirectArray                     1  avgt    5   278.362 ±  0.723  ns/op
+NativeCall.callingJnaDirectEmpty                     1  avgt    5   130.627 ±  0.425  ns/op
+NativeCall.callingJnaEmpty                           1  avgt    5   139.758 ± 11.622  ns/op
+NativeCall.callingStaticArray                        1  avgt    5    61.151 ±  0.534  ns/op
+NativeCall.callingStaticEmpty                        1  avgt    5    11.721 ±  0.101  ns/op
+
+-->
+          </section>
+
         </section>
 
         <section data-background="images/background_default.jpg" class="demo" style="height: 100%;">
@@ -3084,7 +3150,7 @@ Hello JavaLand DIRECT
                   </li>
                 </ul>
               </li>
-              <li>Safe and performant (builds on
+              <li>Safe and fast (builds on
                 <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/invoke/MethodHandle.html">method-</a>
                 and <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/invoke/VarHandle.html">var-handles</a>)
                 <ul>
@@ -3143,6 +3209,65 @@ public class NativeCallFFI {
 
           <section class="center">
             <h1>Demo - Foreign Function &amp; Memory API</h1>
+          </section>
+
+          <section data-background="images/background_default.jpg" class="demo">
+
+            <h1>Benchmark: JNI vs. FFI</h1>
+            <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+              <code class="terminal" data-trim="true" data-noescape="true" style="height:100%">
+$ java -XX:+UseSystemMemoryBarrier -jar benchmarks.jar
+# JMH version: 1.37
+# VM version: JDK 22, OpenJDK 64-Bit Server VM, 22+37-FR
+...
+Benchmark                                    Mode  Cnt     Score    Error  Units
+NativeCall.callingStaticEmpty                avgt    5    <span class="fragment highlight-current-border border-no-bottom" data-fragment-index="3">11.721</span> ±  0.101  ns/op
+NativeCall.callingFfiEmpty                   avgt    5    <span class="fragment highlight-current-border border-no-bottom-top" data-fragment-index="3">12.775</span> ±  0.471  ns/op
+NativeCall.callingFfiCriticalEmpty           avgt    5    <span class="fragment highlight-current-border border-no-top" data-fragment-index="3">13.248</span> ±  0.050  ns/op
+
+NativeCall.callingStaticArray                avgt    5   <span class="fragment highlight-current-border border-no-bottom" data-fragment-index="5"> 61.151</span> ±  0.534  ns/op
+NativeCall.callingFfiArray                   avgt    5   <span class="fragment highlight-current-border border-no-bottom-top" data-fragment-index="5">115.165</span> ±  0.533  ns/op
+NativeCall.callingFfiCriticalArray           avgt    5   <span class="fragment highlight-current-border border-no-bottom-top" data-fragment-index="5">103.978</span> ±  0.534  ns/op
+NativeCall.callingFfiCriticalHeapAccessArray avgt    5   <span class="fragment highlight-current-border border-no-top" data-fragment-index="5"> 22.271</span> ±  0.108  ns/op
+
+NativeCall.callingJniCriticalArray           avgt    5    10.790 ±  0.401  ns/op
+NativeCall.callingNalimArray                 avgt    5     4.984 ±  0.011  ns/op
+              </code>
+            </pre>
+<!--
+Laptop (benchmark_start.sh / cset)
+
+sudo cset shield __user=simonisv __group=domain^users __exec bash __ -c '/share/software/Java/corretto-22/bin/java -XX:+UseSystemMemoryBarrier -Djava.library.path=target/native -Djna.library.path=target/native -jar target/benchmarks.jar io.simonis.NativeCall.callingStaticEmpty$ io.simonis.NativeCall.callingFfiEmpty$ io.simonis.NativeCall.callingFfiCriticalEmpty$ io.simonis.NativeCall.callingStaticArray$ io.simonis.NativeCall.callingFfiArray$ io.simonis.NativeCall.callingFfiCriticalArray$ io.simonis.NativeCall.callingFfiCriticalHeapAccessArray$ io.simonis.NativeCall.callingJnaArray$ io.simonis.NativeCall.callingJnaDirectArray$ io.simonis.NativeCall.callingJnaEmpty io.simonis.NativeCall.callingJnaDirectEmpty$'
+
+Corretto 22
+===========
+
+Benchmark                                     (length)  Mode  Cnt     Score    Error  Units
+NativeCall.callingFfiArray                           1  avgt    5   115.165 ±  0.533  ns/op
+NativeCall.callingFfiCriticalArray                   1  avgt    5   103.978 ±  0.534  ns/op
+NativeCall.callingFfiCriticalEmpty                   1  avgt    5    13.248 ±  0.050  ns/op
+NativeCall.callingFfiCriticalHeapAccessArray         1  avgt    5    22.271 ±  0.108  ns/op
+NativeCall.callingFfiEmpty                           1  avgt    5    12.775 ±  0.471  ns/op
+NativeCall.callingJnaArray                           1  avgt    5  1048.369 ± 18.619  ns/op
+NativeCall.callingJnaDirectArray                     1  avgt    5   278.362 ±  0.723  ns/op
+NativeCall.callingJnaDirectEmpty                     1  avgt    5   130.627 ±  0.425  ns/op
+NativeCall.callingJnaEmpty                           1  avgt    5   139.758 ± 11.622  ns/op
+NativeCall.callingStaticArray                        1  avgt    5    61.151 ±  0.534  ns/op
+NativeCall.callingStaticEmpty                        1  avgt    5    11.721 ±  0.101  ns/op
+
+NativeCall.callingFfiArray                           1  avgt    5   110.261 ±   4.161  ns/op
+NativeCall.callingFfiCriticalArray                   1  avgt    5   106.268 ±   0.561  ns/op
+NativeCall.callingFfiCriticalEmpty                   1  avgt    5    13.238 ±   0.034  ns/op
+NativeCall.callingFfiCriticalHeapAccessArray         1  avgt    5    22.686 ±   0.424  ns/op
+NativeCall.callingFfiEmpty                           1  avgt    5    12.749 ±   0.288  ns/op
+NativeCall.callingJnaArray                           1  avgt    5  1125.029 ± 202.077  ns/op
+NativeCall.callingJnaDirectArray                     1  avgt    5   277.443 ±  10.947  ns/op
+NativeCall.callingJnaDirectEmpty                     1  avgt    5   130.617 ±   3.059  ns/op
+NativeCall.callingJnaEmpty                           1  avgt    5   139.199 ±   3.309  ns/op
+NativeCall.callingStaticArray                        1  avgt    5    61.686 ±   1.328  ns/op
+NativeCall.callingStaticEmpty                        1  avgt    5    11.309 ±   0.080  ns/op
+
+-->
           </section>
 
         </section>
@@ -3289,6 +3414,31 @@ public class NativeCallFFI {
 
         transition: 'none', // none/fade/slide/convex/concave/zoom
 
+        // Changes the behavior of our navigation directions.
+        //
+        // "default"
+        // Left/right arrow keys step between horizontal slides, up/down
+        // arrow keys step between vertical slides. Space key steps through
+        // all slides (both horizontal and vertical).
+        //
+        // "linear"
+        // Removes the up/down arrows. Left/right arrows step through all
+        // slides (both horizontal and vertical).
+        //
+        // "grid"
+        // When this is enabled, stepping left/right from a vertical stack
+        // to an adjacent vertical stack will land you at the same vertical
+        // index.
+        //
+        // Consider a deck with six slides ordered in two vertical stacks:
+        // 1.1    2.1
+        // 1.2    2.2
+        // 1.3    2.3
+        //
+        // If you're on slide 1.3 and navigate right, you will normally move
+        // from 1.3 -> 2.1. If "grid" is used, the same navigation takes you
+        // from 1.3 -> 2.3.
+        navigationMode: 'default',
         // Optional reveal.js plugins
         dependencies: [
           { src: 'reveal.js/lib/js/classList.js', condition: function() { return !document.body.classList; } },
@@ -3492,5 +3642,19 @@ hljs.initHighlightingOnLoad(); } },
  -->
 <!--  LocalWords:  src ZipOutputStream putNextEntry ZipEntry's vers
  -->
-<!--  LocalWords:  GZIP Gzip infgen
+<!--  LocalWords:  GZIP Gzip infgen preprocessor lightyellow tbody GC
+ -->
+<!--  LocalWords:  TieredCompilation benchmarking JMH Hyperthreading
+ -->
+<!--  LocalWords:  cset Preallocate JVM JVMTI Safepoint JEP HotSpot
+ -->
+<!--  LocalWords:  Safepoints JIT ns Xeon Graviton UseMembar Nalim
+ -->
+<!--  LocalWords:  JVMCI Pangin AsyncProfiler JNA libffi CriticalJNI
+ -->
+<!--  LocalWords:  UseSystemMemoryBarrier mprotect Manpage crypto
+ -->
+<!--  LocalWords:  CriticalJNINatives JavaCritical JavaCPP
+ -->
+<!--  LocalWords:  GetPrimitiveArrayCritical
  -->
