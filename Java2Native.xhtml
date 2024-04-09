@@ -3060,6 +3060,132 @@ Hello JavaLand DIRECT
 
         </section>
 
+        <section data-background="images/background_default.jpg" class="demo" style="height: 100%;">
+
+          <section data-background="images/background_default.jpg">
+            <h1><a href="https://openjdk.org/jeps/454">JEP 454</a>: Foreign Function &amp; Memory API</h1>
+
+            <ul>
+              <li>Standard API for Java/Native interoperability</li>
+              <li>Developed in <a href="https://openjdk.org/projects/panama/">Project Panama</a>
+                <ul>
+                  <li>Foreign-Memory Access API: <a href="https://openjdk.org/jeps/370">JEP 370</a> (JDK 14),
+                    <a href="https://openjdk.org/jeps/383">JEP 383</a> (JDK 15),
+                     <a href="https://openjdk.org/jeps/393">JEP 393</a> (JDK 16)
+                  </li>
+                  <li>Foreign Linker API: <a href="https://openjdk.org/jeps/389">JEP 389</a> (JDK 16)
+                  </li>
+                  <li>Foreign Function &amp; Memory API: <a href="https://openjdk.org/jeps/412">JEP 412</a> (JDK 17),
+                    <a href="https://openjdk.org/jeps/419">JEP 419</a> (JDK 18),<br/>
+                    <a href="https://openjdk.org/jeps/424">JEP 424</a> (JDK 19),
+                    <a href="https://openjdk.org/jeps/434">JEP 434</a> (JDK 20),
+                    <a href="https://openjdk.org/jeps/442">JEP 442</a> (JDK 21),
+                    <a href="https://openjdk.org/jeps/454">JEP 454</a> (JDK 22)
+                  </li>
+                </ul>
+              </li>
+              <li>Safe and performant (builds on
+                <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/invoke/MethodHandle.html">method-</a>
+                and <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/invoke/VarHandle.html">var-handles</a>)
+                <ul>
+                  <li>Can use <a href="https://github.com/atgreen/libffi">libffi</a> as native linker implementation</li>
+                </ul>
+              </li>
+              <li>Heavily optimized by JIT compiler<br/><br/></li>
+              <li class="fragment"><a href="https://github.com/openjdk/jextract"><code>jexctract</code></a>:
+                generates Java bindings from native headers (not part of JDK)</li>
+            </ul>
+          </section>
+
+          <section data-background="images/background_default.jpg" class="demo">
+
+            <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+              <code class="java" data-trim="true" data-noescape="true" style="height:100%">
+public class NativeCallFFI {
+
+  public static void main(String[] args) throws Throwable {
+    // Provides 'void sayHello(char*)' and 'char* getLine()'
+    <span class="fragment highlight-current-border" data-fragment-index="3">System.loadLibrary(<span class="fragment highlight-current-border" data-fragment-index="5">"NativeCallJNA"</span>)</span>;
+
+<span class="fragment" data-fragment-index="7">    MemorySegment addr = <span class="fragment highlight-current-border" data-fragment-index="9">SymbolLookup.loaderLookup()</span>
+      .<span class="fragment highlight-current-border" data-fragment-index="11">find("sayHello")</span>.orElseThrow();</span>
+<span class="fragment" data-fragment-index="13">    <span class="fragment highlight-current-border" data-fragment-index="15">FunctionDescriptor</span> fd = FunctionDescriptor.<span class="fragment highlight-current-border" data-fragment-index="17">ofVoid(ValueLayout.ADDRESS)</span>;</span>
+<span class="fragment" data-fragment-index="19">    <span class="fragment highlight-current-border" data-fragment-index="21">MethodHandle sayHello</span> = Linker.nativeLinker()
+      .<span class="fragment highlight-current-border" data-fragment-index="23">downcallHandle(addr, fd)</span>;</span>
+<span class="fragment" data-fragment-index="25">    try (Arena arena = Arena.ofConfined()) {
+      // 'arena.allocateFrom()' corresponds to 'env->GetStringUTFChars()'
+      <span class="fragment highlight-current-border" data-fragment-index="27">sayHello.invokeExact</span>(<span class="fragment highlight-current-border" data-fragment-index="29">arena.allocateFrom("JavaLand")</span>);
+    }</span>
+...
+              </code>
+            </pre>
+          </section>
+
+          <section data-background="images/background_default.jpg" class="demo">
+
+            <pre class="big noshadow" style="height:100%; margin: 0;" data-trim="true">
+              <code class="java" data-trim="true" data-noescape="true" style="height:100%">
+...
+    <span class="fragment" data-fragment-index="3">addr = SymbolLookup.loaderLookup()
+      .<span class="fragment highlight-current-border" data-fragment-index="5">find("getLine")</span>.orElseThrow();</span>
+    <span class="fragment" data-fragment-index="7">fd = <span class="fragment highlight-current-border" data-fragment-index="9">FunctionDescriptor.of(ValueLayout.ADDRESS)</span>;</span>
+    <span class="fragment" data-fragment-index="10">MethodHandle getLine = Linker.nativeLinker()
+      .<span class="fragment highlight-current-border" data-fragment-index="11">downcallHandle(addr, fd /*, <span class="fragment highlight-current-border" data-fragment-index="13">Linker.Option.critical(false)</span> */)</span>;</span>
+    <span class="fragment" data-fragment-index="15">String s = (<span class="fragment highlight-current-border" data-fragment-index="17">(MemorySegment) getLine.invokeExact()</span>)
+      // 'MemorySegment.getString()' corresponds to 'env->NewStringUTF()'
+      .<span class="fragment highlight-current-border" data-fragment-index="19">reinterpret(16 /* unsafe !!! */).getString(0)</span>;</span>
+    <span class="fragment" data-fragment-index="21">System.out.println(s);
+  }
+}</span>
+              </code>
+            </pre>
+          </section>
+
+          <section class="center">
+            <h1>Demo - Foreign Function &amp; Memory API</h1>
+          </section>
+
+        </section>
+
+
+        <section data-background="images/background_default.jpg">
+
+          <h1>Security</h1>
+
+          <ul>
+            <li>Native access is inherently <em class="bold" style="color : red;">unsafe</em> !!!
+              <ul>
+                <li>No difference if JNI, JNA, CriticalJNI, Nalim, FFI, ..</li>
+                <li><a href="https://docs.oracle.com/javase/8/docs/platform/jvmti/jvmti.html">JVMTI</a> agents have full JNI access</li>
+             </ul>
+            </li>
+            <li class="fragment">Since JDK 6: <a href="https://docs.oracle.com/en/java/javase/20/docs/api/jdk.attach/com/sun/tools/attach/package-summary.html">JDK attach API</a>
+              (for <code>jstack</code>, <code>jcmd</code>, <code>jconsole</code>),..
+              <ul>
+                <li><code>-XX:-DisableAttachMechanism</code></li>
+             </ul>
+            </li>
+            <li class="fragment"><a href="https://openjdk.org/jeps/8305968">JEP draft: Integrity by Default</a></li>
+            <li class="fragment"><a href="https://bugs.openjdk.org/browse/JDK-8180425">Disable agent self-attach</a> (JDK 9)
+              <ul>
+                <li><code>-Djdk.attach.allowAttachSelf=&lt;true|false&gt;</code></li>
+              </ul>
+            </li>
+            <li class="fragment"><a href="https://openjdk.org/jeps/451">JEP 451</a>:
+              Prepare to Disallow the Dynamic Loading of Agents (JDK 21)
+              <ul>
+                <li><code>-XX:+EnableDynamicAgentLoading</code></li>
+              </ul>
+            </li>
+            <li class="fragment">JNI and FFI will eventually be disabled by default
+              <ul>
+                <li><code>--enable-native-access=ALL-UNNAMED</code></li>
+              </ul>
+            </li>
+          </ul>
+
+        </section>
+
 
         <section data-background="images/background_default.jpg" class="demo" style="height: 100%;">
 
