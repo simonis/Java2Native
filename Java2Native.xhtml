@@ -2688,11 +2688,15 @@ NativeCall.callingStaticEmpty              1  avgt    5  21.145 ± 0.002  ns/op
   <span class="fragment highlight-current-border" data-fragment-index="5">@Link</span>
   public static native long nalimArray(<span class="fragment highlight-current-border" data-fragment-index="7">int length, byte[] b</span>);
 
+  static {
+    System.loadLibrary("NativeCall");
+    <span class="fragment highlight-current-border" data-fragment-index="6">Linker.linkClass(NativeCall.class);</span>
+  }
+
   @Benchmark
   public void callingNalimEmpty() {
     nalimEmpty();
   }
-
   @Benchmark
   public void callingNalimArray() {
     nalimArray(<span class="fragment highlight-current-border" data-fragment-index="7">array.length, array</span>);
